@@ -1,3 +1,4 @@
 # co2_footprint_tracker
 
-A new Flutter project.
+Firebase configuration done and collection were created.
+Mapbox account created (Rakindu's).
