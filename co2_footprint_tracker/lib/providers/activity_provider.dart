@@ -35,8 +35,8 @@ class ActivityController extends AsyncNotifier<void> {
     Map<String, dynamic>? privacy,
   }) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final user = ref.read(authStateChangesProvider).value;
+    try {
+      final user = ref.read(firebaseAuthProvider).currentUser;
       if (user == null) throw Exception('User not logged in');
 
       // 1. Get emission factors
@@ -67,7 +67,11 @@ class ActivityController extends AsyncNotifier<void> {
       
       // Refresh activities
       ref.invalidate(userActivitiesProvider);
-    });
+      state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      throw Exception('Failed to log transport: $e');
+    }
   }
 
   Future<void> logFoodActivity({
@@ -75,8 +79,8 @@ class ActivityController extends AsyncNotifier<void> {
     int servings = 1,
   }) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final user = ref.read(authStateChangesProvider).value;
+    try {
+      final user = ref.read(firebaseAuthProvider).currentUser;
       if (user == null) throw Exception('User not logged in');
 
       // Static calculation for food as example, could be brought from settings too
@@ -100,7 +104,11 @@ class ActivityController extends AsyncNotifier<void> {
 
       await ref.read(activityServiceProvider).saveActivity(activity);
       ref.invalidate(userActivitiesProvider);
-    });
+      state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      throw Exception('Failed to log food: $e');
+    }
   }
 
   Future<void> logEnergyActivity({
@@ -108,8 +116,8 @@ class ActivityController extends AsyncNotifier<void> {
     required double kwh,
   }) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final user = ref.read(authStateChangesProvider).value;
+    try {
+      final user = ref.read(firebaseAuthProvider).currentUser;
       if (user == null) throw Exception('User not logged in');
 
       // Static calculation for energy
@@ -132,7 +140,11 @@ class ActivityController extends AsyncNotifier<void> {
 
       await ref.read(activityServiceProvider).saveActivity(activity);
       ref.invalidate(userActivitiesProvider);
-    });
+      state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      throw Exception('Failed to log energy: $e');
+    }
   }
 }
 
