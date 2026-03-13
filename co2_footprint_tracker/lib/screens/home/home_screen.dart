@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../providers/auth_provider.dart';
+import '../activity/add_activity_screen.dart';
 import '../auth/login_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -28,34 +29,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle),
-            label: 'Add',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.leaderboard),
-            label: 'Leaderboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 10,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: Colors.green.shade700,
+          unselectedItemColor: Colors.grey.shade400,
+          selectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 12),
+          unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 12),
+          elevation: 0,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.add_circle),
+              label: 'Add',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_alt_rounded),
+              label: 'Community',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.leaderboard_rounded),
+              label: 'Rank',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -68,171 +84,261 @@ class HomeDashboard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = FirebaseAuth.instance.currentUser;
 
+    final displayName = (user?.displayName?.isNotEmpty == true)
+        ? user!.displayName!
+        : ((user?.email?.isNotEmpty == true) ? user!.email!.split('@')[0] : 'Eco Warrior');
+
+    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'CO₂ Tracker',
-          style: GoogleFonts.inter(
-            color: Colors.green,
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () async {
-              await ref.read(authControllerProvider.notifier).logout();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              }
-            },
-            icon: const Icon(Icons.logout, color: Colors.grey),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome message
-            Text(
-              'Welcome back, ${user?.displayName ?? user?.email?.split('@')[0] ?? 'User'}!',
-              style: GoogleFonts.inter(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+      backgroundColor: const Color(0xFFF8FAFC), // Lighter background for better contrast
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // 1. Top Header Section (Scrolling)
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Hello,',
+                                style: GoogleFonts.inter(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              Text(
+                                displayName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          onSelected: (value) async {
+                            if (value == 'logout') {
+                              await ref.read(authControllerProvider.notifier).logout();
+                              if (context.mounted) {
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                  (route) => false,
+                                );
+                              }
+                            }
+                          },
+                          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                            PopupMenuItem<String>(
+                              value: 'logout',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.logout, color: Colors.red),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Logout',
+                                    style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          child: CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Colors.green.shade100,
+                            child: Text(
+                              initial,
+                              style: GoogleFonts.inter(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 20),
+                  // Prominent Metrics Row
+                  Row(
+                    children: [
+                      Expanded(child: _buildHeaderMetricCard(
+                        icon: Icons.local_fire_department,
+                        color: Colors.orange,
+                        value: '7',
+                        label: 'Day Streak',
+                      )),
+                      const SizedBox(width: 15),
+                      Expanded(child: _buildHeaderMetricCard(
+                        icon: Icons.star_rounded,
+                        color: Colors.amber,
+                        value: '420',
+                        label: 'Points',
+                      )),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 30),
-
-            // Today's Carbon Footprint
-            _buildMetricCard(
-              title: "Today's CO₂ Footprint",
-              value: "2.4 kg",
-              icon: Icons.eco,
-              color: Colors.green,
+  
+            // 2. Main Content Area
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Main Footprint Card
+                  _buildMainFootprintCard(),
+                  const SizedBox(height: 24),
+  
+                  // Category Breakdown & Chart
+                  _buildCategoryBreakdown(),
+                  const SizedBox(height: 24),
+  
+                  // Quick Tips
+                  _buildQuickTips(),
+                  const SizedBox(height: 30), // Padding for bottom nav
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
-
-            // Weekly Trend Chart Placeholder
-            _buildChartCard(),
-            const SizedBox(height: 20),
-
-            // Category Breakdown
-            _buildCategoryBreakdown(),
-            const SizedBox(height: 20),
-
-            // Streak and Points Row
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStreakCard(),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: _buildPointsCard(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-
-            // Quick Tips
-            _buildQuickTips(),
           ],
         ),
       ),
-    );
+    ));
   }
 
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
+  // --- UI Components ---
+
+  Widget _buildHeaderMetricCard({
     required IconData icon,
     required Color color,
+    required String value,
+    required String label,
   }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+          Icon(icon, color: color, size: 28),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: color.withValues(alpha: 0.9),
                 ),
-                Text(
-                  value,
-                  style: GoogleFonts.inter(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
+              ),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color.withValues(alpha: 0.7),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildChartCard() {
+  Widget _buildMainFootprintCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [Colors.green.shade600, Colors.green.shade400],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Weekly Trend',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.eco, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                "Today's Footprint",
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
-          // Placeholder for chart
-          Container(
-            height: 150,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                'Chart Placeholder\n(Will implement with charts library)',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(color: Colors.grey),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                "2.4",
+                style: GoogleFonts.inter(
+                  fontSize: 48,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  height: 1,
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  "kg CO₂",
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white.withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -241,26 +347,34 @@ class HomeDashboard extends ConsumerWidget {
 
   Widget _buildCategoryBreakdown() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Category Breakdown',
+            'Emissions by Category',
             style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
           const SizedBox(height: 20),
           _buildCategoryItem('Transport', '1.2 kg', 0.5, Colors.blue),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _buildCategoryItem('Food', '0.8 kg', 0.33, Colors.orange),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _buildCategoryItem('Energy', '0.4 kg', 0.17, Colors.green),
         ],
       ),
@@ -271,90 +385,55 @@ class HomeDashboard extends ConsumerWidget {
     return Row(
       children: [
         Container(
-          width: 12,
-          height: 12,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            category == 'Transport' ? Icons.directions_car
+            : category == 'Food' ? Icons.restaurant
+            : Icons.bolt,
             color: color,
-            borderRadius: BorderRadius.circular(6),
+            size: 20,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         Expanded(
-          child: Text(
-            category,
-            style: GoogleFonts.inter(fontSize: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                category,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: percentage,
+                  backgroundColor: color.withValues(alpha: 0.1),
+                  color: color,
+                  minHeight: 8,
+                ),
+              ),
+            ],
           ),
         ),
+        const SizedBox(width: 16),
         Text(
           amount,
           style: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.bold,
+            color: Colors.black87,
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildStreakCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E0),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.local_fire_department, color: Colors.orange, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            '7',
-            style: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.orange,
-            ),
-          ),
-          Text(
-            'Day Streak',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPointsCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.star, color: Colors.amber, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            '420',
-            style: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.amber,
-            ),
-          ),
-          Text(
-            'Points',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -362,29 +441,34 @@ class HomeDashboard extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.blue.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Quick Tip 💡',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              const Icon(Icons.lightbulb_outline, color: Colors.blue),
+              const SizedBox(width: 8),
+              Text(
+                'AI Suggestion',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade800,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'Try using public transport instead of driving for your next commute. You could save up to 2.4 kg of CO₂!',
-              style: GoogleFonts.inter(fontSize: 14),
+          Text(
+            'Try using public transport instead of driving for your next commute. You could save up to 2.4 kg of CO₂!',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: Colors.blue.shade900,
+              height: 1.5,
             ),
           ),
         ],
@@ -394,17 +478,6 @@ class HomeDashboard extends ConsumerWidget {
 }
 
 // Placeholder screens for other tabs
-class AddActivityScreen extends StatelessWidget {
-  const AddActivityScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Add Activity Screen')),
-    );
-  }
-}
-
 class CommunityScreen extends StatelessWidget {
   const CommunityScreen({super.key});
 
