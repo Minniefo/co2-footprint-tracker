@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "337742352698",
+    "project_id": "carbon-uk-edu",
+    "storage_bucket": "carbon-uk-edu.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:337742352698:android:0fcad9ed02db23ded1c003",
+        "android_client_info": {
+          "package_name": "com.example.co2_footprint_tracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "337742352698-f293t0a1polslm3dunhggi72mn864gsj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZcwiD6Dta66LQnzsXvEmoOYTmYCnchJY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "337742352698-f293t0a1polslm3dunhggi72mn864gsj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "337742352698-1vvp473pauqaqpkpd43i6s3ned9jdh4u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.co2FootprintTracker"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
