@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../providers/activity_provider.dart';
+import '../../providers/mapbox_provider.dart';
 
 class AddActivityScreen extends ConsumerStatefulWidget {
   const AddActivityScreen({super.key});
@@ -77,6 +80,12 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
   String _transportMode = 'car';
   final _distanceController = TextEditingController();
 
+  LatLng? _startLocation;
+  LatLng? _endLocation;
+  bool _isCalculatingRoute = false;
+  final MapController _mapController = MapController();
+  final LatLng _defaultCenter = const LatLng(51.5074, -0.1278); // London default
+
   final List<String> _modes = [
     'car',
     'bus',
@@ -93,6 +102,54 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
     super.dispose();
   }
 
+  void _handleMapTap(TapPosition tapPosition, LatLng point) async {
+    if (_startLocation == null) {
+      setState(() {
+        _startLocation = point;
+        _endLocation = null;
+      });
+    } else if (_endLocation == null) {
+      setState(() {
+        _endLocation = point;
+      });
+      await _calculateRoute();
+    } else {
+      setState(() {
+        _startLocation = point;
+        _endLocation = null;
+        _distanceController.clear();
+      });
+    }
+  }
+
+  Future<void> _calculateRoute() async {
+    if (_startLocation == null || _endLocation == null) return;
+    
+    setState(() => _isCalculatingRoute = true);
+
+    try {
+      final service = ref.read(mapboxServiceProvider);
+      // Map transport mode to Mapbox routing profiles
+      String mapboxMode = 'driving';
+      if (_transportMode == 'walk') mapboxMode = 'walking';
+      if (_transportMode == 'bike') mapboxMode = 'cycling';
+
+      final routeInfo = await service.getRoute(_startLocation!, _endLocation!, mode: mapboxMode);
+      
+      setState(() {
+        _distanceController.text = routeInfo.distanceKm.toString();
+        _isCalculatingRoute = false;
+      });
+    } catch (e) {
+      setState(() => _isCalculatingRoute = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to calculate route: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -100,13 +157,19 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
       await ref.read(activityControllerProvider.notifier).logTransportActivity(
             transportMode: _transportMode,
             distanceKm: double.parse(_distanceController.text),
+            startArea: _startLocation != null ? '${_startLocation!.latitude.toStringAsFixed(3)}, ${_startLocation!.longitude.toStringAsFixed(3)}' : null,
+            endArea: _endLocation != null ? '${_endLocation!.latitude.toStringAsFixed(3)}, ${_endLocation!.longitude.toStringAsFixed(3)}' : null,
           );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Transport activity logged!')),
         );
-        _distanceController.clear();
+        setState(() {
+          _distanceController.clear();
+          _startLocation = null;
+          _endLocation = null;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -147,7 +210,65 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
                 }
               },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            
+            // Map Widget
+            Text(
+              'Select Route (Tap Start & End)',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _defaultCenter,
+                    initialZoom: 12.0,
+                    onTap: _handleMapTap,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.co2_footprint_tracker',
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        if (_startLocation != null)
+                          Marker(
+                            point: _startLocation!,
+                            width: 40,
+                            height: 40,
+                            child: const Icon(Icons.location_on, color: Colors.green, size: 40),
+                          ),
+                        if (_endLocation != null)
+                          Marker(
+                            point: _endLocation!,
+                            width: 40,
+                            height: 40,
+                            child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_isCalculatingRoute)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Center(
+                  child: LinearProgressIndicator(),
+                ),
+              ),
+            const SizedBox(height: 16),
+            
             TextFormField(
               controller: _distanceController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -163,7 +284,7 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
             ),
             const Spacer(),
             ElevatedButton(
-              onPressed: isLoading ? null : _submit,
+              onPressed: isLoading || _isCalculatingRoute ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 padding: const EdgeInsets.symmetric(vertical: 16),
