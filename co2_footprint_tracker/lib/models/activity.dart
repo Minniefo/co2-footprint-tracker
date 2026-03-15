@@ -15,6 +15,9 @@ abstract class Activity {
     this.source = 'manual',
   });
 
+  double get co2Kg;
+  String get activityType => type;
+
   Map<String, dynamic> toMap();
 
   factory Activity.fromMap(String id, Map<String, dynamic> map) {

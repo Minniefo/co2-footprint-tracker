@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../providers/user_provider.dart';
+import '../../providers/activity_provider.dart';
 import '../activity/add_activity_screen.dart';
 import '../auth/login_screen.dart';
+import '../gamification/gamification_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -90,12 +93,45 @@ class HomeDashboard extends ConsumerWidget {
 
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
 
+    final userAsync = ref.watch(userDocumentProvider);
+    final activitiesAsync = ref.watch(userActivitiesProvider);
+    
+    // Calculate Today's footprint
+    double todayFootprint = 0.0;
+    
+    // Grouping by category
+    double transportFootprint = 0.0;
+    double foodFootprint = 0.0;
+    double energyFootprint = 0.0;
+    
+    if (activitiesAsync.hasValue) {
+      final now = DateTime.now();
+      for (var activity in activitiesAsync.value!) {
+        final activityDate = activity.createdAt.toDate();
+        // Check if activity was today
+        if (activityDate.year == now.year && activityDate.month == now.month && activityDate.day == now.day) {
+            todayFootprint += activity.co2Kg;
+            
+            if (activity.activityType == 'transport') transportFootprint += activity.co2Kg;
+            if (activity.activityType == 'food') foodFootprint += activity.co2Kg;
+            if (activity.activityType == 'energy') energyFootprint += activity.co2Kg;
+        }
+      }
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC), // Lighter background for better contrast
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
+        child: userAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Center(child: Text('Error: $err')),
+          data: (userModel) {
+            final points = userModel?.points ?? 0;
+            final streak = userModel?.streak ?? 0;
+
+            return SingleChildScrollView(
+              child: Column(
+                children: [
               // 1. Top Header Section (Scrolling)
               Container(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
@@ -177,22 +213,30 @@ class HomeDashboard extends ConsumerWidget {
                     ),
                   const SizedBox(height: 20),
                   // Prominent Metrics Row
-                  Row(
-                    children: [
-                      Expanded(child: _buildHeaderMetricCard(
-                        icon: Icons.local_fire_department,
-                        color: Colors.orange,
-                        value: '7',
-                        label: 'Day Streak',
-                      )),
-                      const SizedBox(width: 15),
-                      Expanded(child: _buildHeaderMetricCard(
-                        icon: Icons.star_rounded,
-                        color: Colors.amber,
-                        value: '420',
-                        label: 'Points',
-                      )),
-                    ],
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const GamificationScreen()),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        Expanded(child: _buildHeaderMetricCard(
+                          icon: Icons.local_fire_department,
+                          color: Colors.orange,
+                          value: streak.toString(),
+                          label: 'Day Streak',
+                        )),
+                        const SizedBox(width: 15),
+                        Expanded(child: _buildHeaderMetricCard(
+                          icon: Icons.star_rounded,
+                          color: Colors.amber,
+                          value: points.toString(),
+                          label: 'Points',
+                        )),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -205,11 +249,11 @@ class HomeDashboard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Main Footprint Card
-                  _buildMainFootprintCard(),
+                  _buildMainFootprintCard(todayFootprint),
                   const SizedBox(height: 24),
   
                   // Category Breakdown & Chart
-                  _buildCategoryBreakdown(),
+                  _buildCategoryBreakdown(todayFootprint, transportFootprint, foodFootprint, energyFootprint),
                   const SizedBox(height: 24),
   
                   // Quick Tips
@@ -220,7 +264,8 @@ class HomeDashboard extends ConsumerWidget {
             ),
           ],
         ),
-      ),
+      );
+     }),
     ));
   }
 
@@ -270,7 +315,7 @@ class HomeDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildMainFootprintCard() {
+  Widget _buildMainFootprintCard(double todayFootprint) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -318,7 +363,7 @@ class HomeDashboard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                "2.4",
+                todayFootprint.toStringAsFixed(1),
                 style: GoogleFonts.inter(
                   fontSize: 48,
                   fontWeight: FontWeight.w900,
@@ -345,7 +390,11 @@ class HomeDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildCategoryBreakdown() {
+  Widget _buildCategoryBreakdown(double total, double transport, double food, double energy) {
+    final tPct = total > 0 ? transport / total : 0.0;
+    final fPct = total > 0 ? food / total : 0.0;
+    final ePct = total > 0 ? energy / total : 0.0;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -371,11 +420,11 @@ class HomeDashboard extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _buildCategoryItem('Transport', '1.2 kg', 0.5, Colors.blue),
+          _buildCategoryItem('Transport', '${transport.toStringAsFixed(1)} kg', tPct, Colors.blue),
           const SizedBox(height: 16),
-          _buildCategoryItem('Food', '0.8 kg', 0.33, Colors.orange),
+          _buildCategoryItem('Food', '${food.toStringAsFixed(1)} kg', fPct, Colors.orange),
           const SizedBox(height: 16),
-          _buildCategoryItem('Energy', '0.4 kg', 0.17, Colors.green),
+          _buildCategoryItem('Energy', '${energy.toStringAsFixed(1)} kg', ePct, Colors.green),
         ],
       ),
     );
