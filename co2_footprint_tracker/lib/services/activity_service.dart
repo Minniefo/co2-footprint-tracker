@@ -8,10 +8,20 @@ class ActivityService {
 
   Future<void> saveActivity(Activity activity) async {
     try {
-      await _firestore
-          .collection('activities')
-          .doc(activity.id)
-          .set(activity.toMap());
+      final activityRef = _firestore.collection('activities').doc(activity.id);
+      final userRef = _firestore.collection('users').doc(activity.userId);
+
+      await _firestore.runTransaction((transaction) async {
+        // 1. Read user doc to get current total_co2_kg
+        final userDoc = await transaction.get(userRef);
+        final currentTotal = (userDoc.data()?['total_co2_kg'] as num?)?.toDouble() ?? 0.0;
+
+        // 2. Perform writes
+        transaction.set(activityRef, activity.toMap());
+        transaction.update(userRef, {
+          'total_co2_kg': currentTotal + activity.co2Kg,
+        });
+      });
     } catch (e) {
       throw Exception('Failed to save activity: $e');
     }
@@ -31,5 +41,16 @@ class ActivityService {
     } catch (e) {
       throw Exception('Failed to get user activities: $e');
     }
+  }
+
+  Stream<List<Activity>> streamUserActivities(String userId) {
+    return _firestore
+        .collection('activities')
+        .where('user_id', isEqualTo: userId)
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Activity.fromMap(doc.id, doc.data()))
+            .toList());
   }
 }

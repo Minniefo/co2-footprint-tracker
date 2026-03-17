@@ -44,17 +44,16 @@ class GamificationService {
     });
   }
 
-  Future<List<PointTransaction>> getPointHistory(String userId) async {
-    final snapshot = await _firestore
+  Stream<List<PointTransaction>> streamPointHistory(String userId) {
+    return _firestore
         .collection('points_transactions')
         .where('user_id', isEqualTo: userId)
         .orderBy('created_at', descending: true)
         .limit(50)
-        .get();
-
-    return snapshot.docs
-        .map((doc) => PointTransaction.fromMap(doc.id, doc.data()))
-        .toList();
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => PointTransaction.fromMap(doc.id, doc.data()))
+            .toList());
   }
 
   Future<List<BadgeModel>> getAllBadges() async {
@@ -64,33 +63,90 @@ class GamificationService {
         .toList();
   }
 
-  Future<List<UserBadge>> getUserBadges(String userId) async {
-    final snapshot = await _firestore
+  Stream<List<UserBadge>> streamUserBadges(String userId) {
+    return _firestore
         .collection('users')
         .doc(userId)
         .collection('badges')
         .orderBy('granted_at', descending: true)
-        .get();
-
-    return snapshot.docs
-        .map((doc) => UserBadge.fromMap(doc.id, doc.data()))
-        .toList();
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => UserBadge.fromMap(doc.id, doc.data()))
+            .toList());
   }
 
-  Future<void> updateStreak(String userId, int currentStreakDays) async {
+  Future<void> updateStreak(String userId) async {
     final userRef = _firestore.collection('users').doc(userId);
     
     await _firestore.runTransaction((transaction) async {
       final userDoc = await transaction.get(userRef);
       if (!userDoc.exists) return;
 
-      int existingStreak = userDoc.data()?['streak'] as int? ?? 0;
+      final data = userDoc.data()!;
+      int currentStreak = data['streak'] as int? ?? 0;
+      int currentPoints = data['points'] as int? ?? 0;
+      
+      // We need the raw timestamp to do accurate timezone-agnostic calendar math
+      final Timestamp? lastActiveTs = data['last_active_at'] as Timestamp?;
+      
+      final now = DateTime.now().toUtc();
+      
+      // Calculate start of today and yesterday in UTC to prevent timezone exploits
+      final todayUtc = DateTime.utc(now.year, now.month, now.day);
+      final yesterdayUtc = todayUtc.subtract(const Duration(days: 1));
 
-      if (currentStreakDays > existingStreak) {
-        transaction.update(userRef, {
-            'streak': currentStreakDays,
-        });
+      bool streakIncremented = false;
+
+      if (lastActiveTs == null) {
+        // First ever activity
+        currentStreak = 1;
+        streakIncremented = true;
+      } else {
+        final lastActiveDate = lastActiveTs.toDate().toUtc();
+        final lastActiveDayUtc = DateTime.utc(lastActiveDate.year, lastActiveDate.month, lastActiveDate.day);
+
+        if (lastActiveDayUtc.isAtSameMomentAs(todayUtc)) {
+          // Already logged an activity today. Streak remains the same.
+        } else if (lastActiveDayUtc.isAtSameMomentAs(yesterdayUtc)) {
+          // Logged activity yesterday. Valid streak continuation!
+          currentStreak += 1;
+          streakIncremented = true;
+        } else if (lastActiveDayUtc.isBefore(yesterdayUtc)) {
+          // Streak broken (missed yesterday or more)
+          currentStreak = 1;
+          streakIncremented = true;
+        } else {
+          // Future date (device clock manipulation?)
+          // We'll reset it to 1 just to be safe
+          currentStreak = 1;
+          streakIncremented = true;
+        }
       }
+
+      // Prepare updates
+      final updates = <String, dynamic>{
+        'last_active_at': FieldValue.serverTimestamp(),
+        'streak': currentStreak,
+      };
+
+      // If they earned a streak continuation, give them bonus points (e.g., +5)
+      if (streakIncremented && currentStreak > 1) {
+        final bonusAmount = 5;
+        updates['points'] = currentPoints + bonusAmount;
+
+        final txRef = _firestore.collection('points_transactions').doc();
+        final tx = PointTransaction(
+          id: txRef.id,
+          userId: userId,
+          type: 'streak_bonus',
+          amount: bonusAmount,
+          reason: '$currentStreak Day Streak Bonus!',
+          createdAt: Timestamp.now(),
+        );
+        transaction.set(txRef, tx.toMap());
+      }
+
+      transaction.update(userRef, updates);
     });
   }
 

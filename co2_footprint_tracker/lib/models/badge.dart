@@ -16,9 +16,9 @@ class BadgeModel {
   factory BadgeModel.fromMap(String id, Map<String, dynamic> map) {
     return BadgeModel(
       badgeId: id,
-      title: map['title'] as String,
-      description: map['description'] as String,
-      icon: map['icon'] as String,
+      title: map['title'] as String? ?? 'Unknown Badge',
+      description: map['description'] as String? ?? '',
+      icon: map['icon'] as String? ?? '🏆',
       criteria: map['criteria'] as Map<String, dynamic>? ?? {},
     );
   }

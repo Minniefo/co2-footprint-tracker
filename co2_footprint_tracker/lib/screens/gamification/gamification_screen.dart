@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/user_provider.dart';
 import '../../providers/gamification_provider.dart';
 import '../../widgets/badge_item.dart';
 
@@ -25,7 +26,7 @@ class GamificationScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildStatsCard(context, ref, user.uid),
+                  _buildStatsCard(context, ref),
                   const SizedBox(height: 24),
                   const Text(
                     'Badges',
@@ -46,7 +47,9 @@ class GamificationScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsCard(BuildContext context, WidgetRef ref, String userId) {
+  Widget _buildStatsCard(BuildContext context, WidgetRef ref) {
+    final userDocAsync = ref.watch(userDocumentProvider);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -65,17 +68,12 @@ class GamificationScreen extends ConsumerWidget {
           ),
         ],
       ),
-      child: FutureBuilder(
-        future: ref.read(firestoreProvider).collection('users').doc(userId).get(),
-        builder: (context, snapshot) {
-          int points = 0;
-          int streak = 0;
-
-          if (snapshot.hasData && snapshot.data!.exists) {
-            final data = snapshot.data!.data();
-            points = data?['points'] as int? ?? 0;
-            streak = data?['streak'] as int? ?? 0;
-          }
+      child: userDocAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: Colors.white)),
+        error: (err, stack) => const Text('Error loading stats', style: TextStyle(color: Colors.white)),
+        data: (userModel) {
+          final points = userModel?.points ?? 0;
+          final streak = userModel?.streak ?? 0;
 
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,

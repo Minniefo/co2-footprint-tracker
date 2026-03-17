@@ -3,20 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/point_transaction.dart';
 import '../models/badge.dart';
 import '../models/user_badge.dart';
+import '../models/activity.dart';
 import '../services/gamification_service.dart';
 import 'auth_provider.dart';
+import 'activity_provider.dart';
 
 final gamificationServiceProvider = Provider<GamificationService>((ref) {
   final firestore = ref.watch(firestoreProvider);
   return GamificationService(firestore);
 });
 
-final pointHistoryProvider = FutureProvider<List<PointTransaction>>((ref) async {
+final pointHistoryProvider = StreamProvider<List<PointTransaction>>((ref) {
   final user = ref.watch(authStateChangesProvider).value;
-  if (user == null) return [];
+  if (user == null) return Stream.value([]);
   
   final service = ref.watch(gamificationServiceProvider);
-  return service.getPointHistory(user.uid);
+  return service.streamPointHistory(user.uid);
 });
 
 final allBadgesProvider = FutureProvider<List<BadgeModel>>((ref) async {
@@ -24,12 +26,12 @@ final allBadgesProvider = FutureProvider<List<BadgeModel>>((ref) async {
   return service.getAllBadges();
 });
 
-final userBadgesProvider = FutureProvider<List<UserBadge>>((ref) async {
+final userBadgesProvider = StreamProvider<List<UserBadge>>((ref) {
   final user = ref.watch(authStateChangesProvider).value;
-  if (user == null) return [];
+  if (user == null) return Stream.value([]);
   
   final service = ref.watch(gamificationServiceProvider);
-  return service.getUserBadges(user.uid);
+  return service.streamUserBadges(user.uid);
 });
 
 class GamificationController extends AsyncNotifier<void> {
@@ -60,11 +62,60 @@ class GamificationController extends AsyncNotifier<void> {
         activityRef: activityRef,
       );
 
-      // 2. We can later add badge logic here (e.g., checking if user crossed a milestone)
-      // For now, let's keep it simple.
+      // 2. Check for newly earned badges
+      final allBadges = await ref.read(allBadgesProvider.future);
+      final currentBadges = await ref.read(userBadgesProvider.future);
+      final grantedIds = currentBadges.map((b) => b.badgeId).toSet();
 
-      // 3. Refresh data
-      ref.invalidate(pointHistoryProvider);
+      // We need updated user stats to check criteria
+      final userDoc = await ref.read(firestoreProvider).collection('users').doc(user.uid).get();
+      final userData = userDoc.data() ?? {};
+      final totalPoints = userData['points'] as int? ?? 0;
+      final currentStreak = userData['streak'] as int? ?? 0;
+      
+      // Determine activity counts for criteria
+      final allActivities = await ref.read(userActivitiesProvider.future);
+      final totalActivities = allActivities.length;
+      final transportActivities = allActivities.where((a) => a.activityType == 'transport').length;
+      final veganMeals = allActivities.where((a) => a.activityType == 'food' && (a as FoodActivity).foodCategory == 'vegan_meal').length;
+
+      for (final badge in allBadges) {
+        if (grantedIds.contains(badge.badgeId)) continue; // Already have it
+
+        bool criteriaMet = true;
+        final criteria = badge.criteria;
+
+        if (criteria.containsKey('activities_count')) {
+          if (totalActivities < (criteria['activities_count'] as num)) criteriaMet = false;
+        }
+        if (criteria.containsKey('streak_days')) {
+          if (currentStreak < (criteria['streak_days'] as num)) criteriaMet = false;
+        }
+        if (criteria.containsKey('transport_activities_count')) {
+          if (transportActivities < (criteria['transport_activities_count'] as num)) criteriaMet = false;
+        }
+        if (criteria.containsKey('vegan_meals_count')) {
+          if (veganMeals < (criteria['vegan_meals_count'] as num)) criteriaMet = false;
+        }
+        if (criteria.containsKey('total_points')) {
+          // Add the newly awarded amount to the current snapshot total just in case
+          if ((totalPoints + amount) < (criteria['total_points'] as num)) criteriaMet = false;
+        }
+
+        if (criteriaMet && criteria.isNotEmpty) {
+          // Grant the badge
+          await service.grantBadge(user.uid, badge.badgeId);
+          // Also award some bonus points for getting a badge!
+          await service.awardPoints(
+            userId: user.uid, 
+            type: 'challenge_reward', 
+            amount: 20, 
+            reason: 'Earned Badge: ${badge.title}',
+          );
+        }
+      }
+
+      // 3. (Data refreshes dynamically via streams, so no explicit ref.invalidate needed)
       
       state = const AsyncData(null);
     } catch (e, st) {
@@ -81,7 +132,7 @@ class GamificationController extends AsyncNotifier<void> {
       final service = ref.read(gamificationServiceProvider);
       await service.grantBadge(user.uid, badgeId);
 
-      ref.invalidate(userBadgesProvider);
+      // Stream auto-updates userBadgesProvider
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);
