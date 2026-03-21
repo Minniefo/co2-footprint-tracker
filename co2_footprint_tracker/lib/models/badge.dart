@@ -19,7 +19,9 @@ class BadgeModel {
       title: map['title'] as String? ?? 'Unknown Badge',
       description: map['description'] as String? ?? '',
       icon: map['icon'] as String? ?? '🏆',
-      criteria: map['criteria'] as Map<String, dynamic>? ?? {},
+      criteria: map['criteria'] != null 
+          ? Map<String, dynamic>.from(map['criteria'] as Map) 
+          : {},
     );
   }
 

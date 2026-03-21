@@ -18,9 +18,9 @@ class ActivityService {
 
         // 2. Perform writes
         transaction.set(activityRef, activity.toMap());
-        transaction.update(userRef, {
+        transaction.set(userRef, {
           'total_co2_kg': currentTotal + activity.co2Kg,
-        });
+        }, SetOptions(merge: true));
       });
     } catch (e) {
       throw Exception('Failed to save activity: $e');

@@ -34,7 +34,7 @@ class UserModel {
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
       displayName: map['display_name'] as String?,
-      email: map['email'] as String,
+      email: map['email'] as String? ?? '',
       country: map['country'] as String?,
       homeType: map['home_type'] as String?,
       dietType: map['diet_type'] as String?,
@@ -43,8 +43,8 @@ class UserModel {
       createdAt: map['created_at'] as Timestamp?,
       lastActiveAt: map['last_active_at'] as Timestamp?,
       totalCo2Kg: (map['total_co2_kg'] as num?)?.toDouble(),
-      points: map['points'] as int?,
-      streak: map['streak'] as int?,
+      points: map['points'] is num ? (map['points'] as num).toInt() : int.tryParse(map['points']?.toString() ?? ''),
+      streak: map['streak'] is num ? (map['streak'] as num).toInt() : int.tryParse(map['streak']?.toString() ?? ''),
       privacy: map['privacy'] != null
           ? PrivacySettings.fromMap(map['privacy'] as Map<String, dynamic>)
           : null,

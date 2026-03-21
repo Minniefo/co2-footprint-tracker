@@ -64,17 +64,17 @@ class GamificationController extends AsyncNotifier<void> {
 
       // 2. Check for newly earned badges
       final allBadges = await ref.read(allBadgesProvider.future);
-      final currentBadges = await ref.read(userBadgesProvider.future);
+      final currentBadges = await service.getUserBadges(user.uid);
       final grantedIds = currentBadges.map((b) => b.badgeId).toSet();
 
       // We need updated user stats to check criteria
       final userDoc = await ref.read(firestoreProvider).collection('users').doc(user.uid).get();
       final userData = userDoc.data() ?? {};
-      final totalPoints = userData['points'] as int? ?? 0;
-      final currentStreak = userData['streak'] as int? ?? 0;
+      final totalPoints = userData['points'] is num ? (userData['points'] as num).toInt() : (int.tryParse(userData['points']?.toString() ?? '0') ?? 0);
+      final currentStreak = userData['streak'] is num ? (userData['streak'] as num).toInt() : (int.tryParse(userData['streak']?.toString() ?? '0') ?? 0);
       
       // Determine activity counts for criteria
-      final allActivities = await ref.read(userActivitiesProvider.future);
+      final allActivities = await ref.read(activityServiceProvider).getUserActivities(user.uid);
       final totalActivities = allActivities.length;
       final transportActivities = allActivities.where((a) => a.activityType == 'transport').length;
       final veganMeals = allActivities.where((a) => a.activityType == 'food' && (a as FoodActivity).foodCategory == 'vegan_meal').length;
@@ -86,20 +86,25 @@ class GamificationController extends AsyncNotifier<void> {
         final criteria = badge.criteria;
 
         if (criteria.containsKey('activities_count')) {
-          if (totalActivities < (criteria['activities_count'] as num)) criteriaMet = false;
+          final req = num.tryParse(criteria['activities_count'].toString()) ?? 0;
+          if (totalActivities < req) criteriaMet = false;
         }
         if (criteria.containsKey('streak_days')) {
-          if (currentStreak < (criteria['streak_days'] as num)) criteriaMet = false;
+          final req = num.tryParse(criteria['streak_days'].toString()) ?? 0;
+          if (currentStreak < req) criteriaMet = false;
         }
         if (criteria.containsKey('transport_activities_count')) {
-          if (transportActivities < (criteria['transport_activities_count'] as num)) criteriaMet = false;
+          final req = num.tryParse(criteria['transport_activities_count'].toString()) ?? 0;
+          if (transportActivities < req) criteriaMet = false;
         }
         if (criteria.containsKey('vegan_meals_count')) {
-          if (veganMeals < (criteria['vegan_meals_count'] as num)) criteriaMet = false;
+          final req = num.tryParse(criteria['vegan_meals_count'].toString()) ?? 0;
+          if (veganMeals < req) criteriaMet = false;
         }
         if (criteria.containsKey('total_points')) {
           // Add the newly awarded amount to the current snapshot total just in case
-          if ((totalPoints + amount) < (criteria['total_points'] as num)) criteriaMet = false;
+          final req = num.tryParse(criteria['total_points'].toString()) ?? 0;
+          if ((totalPoints + amount) < req) criteriaMet = false;
         }
 
         if (criteriaMet && criteria.isNotEmpty) {

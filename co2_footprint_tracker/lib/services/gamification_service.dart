@@ -31,14 +31,13 @@ class GamificationService {
     await _firestore.runTransaction((transaction) async {
       // 1. Read user doc to get current points
       final userDoc = await transaction.get(userRef);
-      if (!userDoc.exists) return; // User must exist to award points
 
-      final currentPoints = userDoc.data()?['points'] as int? ?? 0;
+      final currentPoints = (userDoc.data()?['points'] as num?)?.toInt() ?? 0;
 
       // 2. Perform writes
-      transaction.update(userRef, {
+      transaction.set(userRef, {
         'points': currentPoints + amount,
-      });
+      }, SetOptions(merge: true));
 
       transaction.set(txRef, tx.toMap());
     });
@@ -75,16 +74,27 @@ class GamificationService {
             .toList());
   }
 
+  Future<List<UserBadge>> getUserBadges(String userId) async {
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('badges')
+        .orderBy('granted_at', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => UserBadge.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
   Future<void> updateStreak(String userId) async {
     final userRef = _firestore.collection('users').doc(userId);
     
     await _firestore.runTransaction((transaction) async {
       final userDoc = await transaction.get(userRef);
-      if (!userDoc.exists) return;
 
-      final data = userDoc.data()!;
-      int currentStreak = data['streak'] as int? ?? 0;
-      int currentPoints = data['points'] as int? ?? 0;
+      final data = userDoc.data() ?? {};
+      int currentStreak = (data['streak'] as num?)?.toInt() ?? 0;
+      int currentPoints = (data['points'] as num?)?.toInt() ?? 0;
       
       // We need the raw timestamp to do accurate timezone-agnostic calendar math
       final Timestamp? lastActiveTs = data['last_active_at'] as Timestamp?;
@@ -146,7 +156,7 @@ class GamificationService {
         transaction.set(txRef, tx.toMap());
       }
 
-      transaction.update(userRef, updates);
+      transaction.set(userRef, updates, SetOptions(merge: true));
     });
   }
 
