@@ -9,6 +9,8 @@ import '../../providers/activity_provider.dart';
 import '../activity/add_activity_screen.dart';
 import '../auth/login_screen.dart';
 import '../gamification/gamification_screen.dart';
+import '../community/community_screen.dart';
+import '../community/my_posts_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -527,17 +529,6 @@ class HomeDashboard extends ConsumerWidget {
 }
 
 // Placeholder screens for other tabs
-class CommunityScreen extends StatelessWidget {
-  const CommunityScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Community Screen')),
-    );
-  }
-}
-
 class LeaderboardScreen extends StatelessWidget {
   const LeaderboardScreen({super.key});
 
@@ -554,8 +545,24 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Profile Screen')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile')),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          const Icon(Icons.person, size: 80, color: Colors.green),
+          const SizedBox(height: 24),
+          ListTile(
+            leading: const Icon(Icons.article),
+            title: const Text('My Posts'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPostsScreen()));
+            },
+          ),
+          const Divider(),
+        ],
+      ),
     );
   }
 }
