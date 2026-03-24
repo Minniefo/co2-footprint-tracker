@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../models/community_post.dart';
 import '../../providers/community_provider.dart';
 
+const _kGreen = Color(0xFF2E7D32);
+const _kBg = Color(0xFFF8FAFC);
+
 class EditPostScreen extends ConsumerStatefulWidget {
   final CommunityPost post;
-
   const EditPostScreen({super.key, required this.post});
 
   @override
@@ -15,6 +18,7 @@ class EditPostScreen extends ConsumerStatefulWidget {
 class _EditPostScreenState extends ConsumerState<EditPostScreen> {
   late TextEditingController _contentController;
   bool _isSaving = false;
+  static const int _maxChars = 500;
 
   @override
   void initState() {
@@ -31,16 +35,17 @@ class _EditPostScreenState extends ConsumerState<EditPostScreen> {
   Future<void> _saveChanges() async {
     final content = _contentController.text.trim();
     if (content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Content cannot be empty')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post content cannot be empty.')));
       return;
     }
-
     setState(() => _isSaving = true);
     try {
       await ref.read(communityActionControllerProvider.notifier).editPost(widget.post, content);
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post updated successfully')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(backgroundColor: _kGreen, content: Text('Post updated! ✓', style: GoogleFonts.inter(color: Colors.white))),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -53,38 +58,95 @@ class _EditPostScreenState extends ConsumerState<EditPostScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final charCount = _contentController.text.length;
+    final overLimit = charCount > _maxChars;
+
     return Scaffold(
+      backgroundColor: _kBg,
       appBar: AppBar(
-        title: const Text('Edit Post'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: Colors.black54),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text('Edit Post', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 20, color: Colors.black87)),
         actions: [
-          TextButton(
-            onPressed: _isSaving ? null : _saveChanges,
-            child: _isSaving 
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('SAVE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: ElevatedButton(
+              onPressed: (_isSaving || overLimit) ? null : _saveChanges,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              ),
+              child: _isSaving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text('SAVE', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5)),
+            ),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            TextField(
-              controller: _contentController,
-              maxLines: null,
-              decoration: const InputDecoration(
-                hintText: "Update your post...",
-                border: OutlineInputBorder(),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 12, offset: Offset(0, 4))],
+              ),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _contentController,
+                    maxLines: 8,
+                    onChanged: (_) => setState(() {}),
+                    style: GoogleFonts.inter(fontSize: 15, color: Colors.black87, height: 1.6),
+                    decoration: InputDecoration(
+                      hintText: 'Update your post...',
+                      hintStyle: GoogleFonts.inter(color: Colors.grey.shade400),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '$charCount / $_maxChars',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: overLimit ? Colors.red.shade400 : Colors.grey.shade400,
+                        fontWeight: overLimit ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+
             if (widget.post.mediaUrl != null) ...[
               const SizedBox(height: 16),
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(widget.post.mediaUrl!, fit: BoxFit.cover, height: 250, width: double.infinity),
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(widget.post.mediaUrl!, fit: BoxFit.cover, height: 200, width: double.infinity),
               ),
               const SizedBox(height: 8),
-              const Text('Images cannot be changed currently.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 16, color: Colors.grey.shade500),
+                    const SizedBox(width: 8),
+                    Text('Image editing is not supported yet.', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
+                  ],
+                ),
+              ),
             ],
           ],
         ),
