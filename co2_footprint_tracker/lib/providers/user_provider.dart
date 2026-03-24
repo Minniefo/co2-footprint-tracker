@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -47,6 +48,20 @@ class ProfileController extends AsyncNotifier<void> {
       if (uid == null) throw Exception('Not logged in');
       await ref.read(userServiceProvider).updatePrivacy(uid, shareRank: shareRank, shareActivityDetails: shareActivityDetails);
       state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
+  Future<String> uploadAvatar(File imageFile) async {
+    state = const AsyncLoading();
+    try {
+      final uid = ref.read(firebaseAuthProvider).currentUser?.uid;
+      if (uid == null) throw Exception('Not logged in');
+      final url = await ref.read(userServiceProvider).uploadAvatar(uid, imageFile);
+      state = const AsyncData(null);
+      return url;
     } catch (e, st) {
       state = AsyncError(e, st);
       rethrow;

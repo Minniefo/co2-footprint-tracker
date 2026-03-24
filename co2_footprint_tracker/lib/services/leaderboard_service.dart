@@ -51,6 +51,7 @@ class LeaderboardService {
     required String displayName,
     required int totalPoints,
     required double totalCo2SavedKg,
+    String? photoUrl,
   }) async {
     final weekId = currentWeekId();
     final entryRef = _firestore
@@ -59,12 +60,12 @@ class LeaderboardService {
         .collection('entries')
         .doc(userId);
 
-    // Merge so we never overwrite partial data from other fields
     await entryRef.set({
       'user_id': userId,
       'display_name': displayName,
       'points': totalPoints,
       'co2_saved_kg': totalCo2SavedKg,
+      if (photoUrl != null) 'photo_url': photoUrl,
       'updated_at': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 

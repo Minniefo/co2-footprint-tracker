@@ -180,11 +180,14 @@ class _PodiumSlot extends StatelessWidget {
         const SizedBox(height: 6),
         CircleAvatar(
           radius: avatarRadius,
+          backgroundImage: entry.photoUrl != null ? NetworkImage(entry.photoUrl!) : null,
           backgroundColor: podiumColor.withValues(alpha: 0.15),
-          child: Text(
-            entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?',
-            style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: podiumColor, fontSize: avatarRadius * 0.9),
-          ),
+          child: entry.photoUrl == null
+              ? Text(
+                  entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: podiumColor, fontSize: avatarRadius * 0.9),
+                )
+              : null,
         ),
         const SizedBox(height: 6),
         Text(
@@ -281,11 +284,14 @@ class _TableRow extends StatelessWidget {
           // Avatar + name
           CircleAvatar(
             radius: 16,
+            backgroundImage: entry.photoUrl != null ? NetworkImage(entry.photoUrl!) : null,
             backgroundColor: (isCurrentUser ? _kGreen : Colors.blueGrey).withValues(alpha: 0.15),
-            child: Text(
-              entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?',
-              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: isCurrentUser ? _kGreen : Colors.blueGrey.shade600),
-            ),
+            child: entry.photoUrl == null
+                ? Text(
+                    entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?',
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: isCurrentUser ? _kGreen : Colors.blueGrey.shade600),
+                  )
+                : null,
           ),
           const SizedBox(width: 10),
           Expanded(

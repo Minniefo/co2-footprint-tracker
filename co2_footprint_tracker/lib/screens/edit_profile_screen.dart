@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/user.dart';
 import '../providers/user_provider.dart';
 
@@ -19,6 +21,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _nameController;
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
+  bool _isUploadingAvatar = false;
+  File? _newAvatarFile;           // locally selected, not yet uploaded
+  String? _uploadedAvatarUrl;     // freshly uploaded URL (overrides Firestore)
+  static const int _maxChars = 30;
 
   @override
   void initState() {
@@ -32,6 +38,41 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     super.dispose();
   }
 
+  // ── Pick + upload avatar ──────────────────────────────────────────────────
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 512);
+    if (picked == null) return;
+
+    final file = File(picked.path);
+    setState(() {
+      _newAvatarFile = file;
+      _isUploadingAvatar = true;
+    });
+    try {
+      final url = await ref.read(profileControllerProvider.notifier).uploadAvatar(file);
+      setState(() {
+        _uploadedAvatarUrl = url;
+        _isUploadingAvatar = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: _kGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text('Profile photo updated! 📸', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+        ));
+      }
+    } catch (e) {
+      setState(() {
+        _newAvatarFile = null;
+        _isUploadingAvatar = false;
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+    }
+  }
+
+  // ── Save name ─────────────────────────────────────────────────────────────
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
@@ -39,19 +80,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       await ref.read(profileControllerProvider.notifier).updateDisplayName(_nameController.text.trim());
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: _kGreen,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            content: Text('Profile updated! ✓', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: _kGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text('Profile updated! ✓', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+        ));
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update: $e')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -59,6 +96,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final charCount = _nameController.text.length;
+    final overLimit = charCount > _maxChars;
+
+    // Resolve what to display in the avatar
+    final existingPhotoUrl = widget.user?.photoUrl;
+
     return Scaffold(
       backgroundColor: _kBg,
       appBar: AppBar(
@@ -73,7 +116,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: ElevatedButton(
-              onPressed: _isSaving ? null : _save,
+              onPressed: (_isSaving || overLimit || _isUploadingAvatar) ? null : _save,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _kGreen,
                 foregroundColor: Colors.white,
@@ -94,39 +137,97 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // ── Avatar preview ──
+              // ── Tappable Avatar ──────────────────────────────────────────
               Center(
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(colors: [Color(0xFF2E7D32), Color(0xFF43A047)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    _nameController.text.isNotEmpty ? _nameController.text[0].toUpperCase() : 'U',
-                    style: GoogleFonts.inter(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+                child: GestureDetector(
+                  onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      // Avatar circle
+                      Container(
+                        width: 96,
+                        height: 96,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _kGreen, width: 3),
+                          boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 12, offset: Offset(0, 4))],
+                        ),
+                        child: ClipOval(
+                          child: _isUploadingAvatar
+                              // Uploading spinner overlay
+                              ? Container(
+                                  color: Colors.black26,
+                                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)),
+                                )
+                              : _newAvatarFile != null
+                                  // Locally selected file preview
+                                  ? Image.file(_newAvatarFile!, fit: BoxFit.cover)
+                                  : (_uploadedAvatarUrl ?? existingPhotoUrl) != null
+                                      // Network photo from Firebase
+                                      ? Image.network(
+                                          _uploadedAvatarUrl ?? existingPhotoUrl!,
+                                          fit: BoxFit.cover,
+                                          loadingBuilder: (_, child, progress) => progress == null
+                                              ? child
+                                              : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                        )
+                                      // Fallback: gradient with initial
+                                      : Container(
+                                          decoration: const BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            _nameController.text.isNotEmpty ? _nameController.text[0].toUpperCase() : 'U',
+                                            style: GoogleFonts.inter(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white),
+                                          ),
+                                        ),
+                        ),
+                      ),
+
+                      // Camera badge
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: const BoxDecoration(
+                          color: _kGreen,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.white),
+                      ),
+                    ],
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Tap to change photo',
+                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
+              ),
               const SizedBox(height: 28),
 
-              // ── Name field ──
+              // ── Name field ───────────────────────────────────────────────
               _FieldCard(
                 label: 'Display Name',
                 hint: 'Enter your display name',
                 icon: Icons.person_rounded,
                 controller: _nameController,
                 onChanged: (_) => setState(() {}),
+                maxChars: _maxChars,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Name cannot be empty';
                   if (v.trim().length < 2) return 'Name must be at least 2 characters';
-                  if (v.trim().length > 30) return 'Name cannot exceed 30 characters';
+                  if (v.trim().length > _maxChars) return 'Name cannot exceed $_maxChars characters';
                   return null;
                 },
               ),
               const SizedBox(height: 12),
 
-              // ── Email (read-only) ──
+              // ── Email (read-only) ────────────────────────────────────────
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -175,18 +276,22 @@ class _FieldCard extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
   final String? Function(String?)? validator;
+  final int maxChars;
 
   const _FieldCard({
     required this.label,
     required this.hint,
     required this.icon,
     required this.controller,
+    required this.maxChars,
     this.onChanged,
     this.validator,
   });
 
   @override
   Widget build(BuildContext context) {
+    final count = controller.text.length;
+    final over = count > maxChars;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       decoration: BoxDecoration(
@@ -205,7 +310,8 @@ class _FieldCard extends StatelessWidget {
                 child: Icon(icon, color: const Color(0xFF2E7D32), size: 18),
               ),
               const SizedBox(width: 10),
-              Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.black87)),
+              Expanded(child: Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.black87))),
+              Text('$count / $maxChars', style: GoogleFonts.inter(fontSize: 11, color: over ? Colors.red.shade400 : Colors.grey.shade400, fontWeight: over ? FontWeight.bold : FontWeight.normal)),
             ],
           ),
           TextFormField(

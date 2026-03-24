@@ -4,6 +4,7 @@ class LeaderboardEntry {
   final int points;
   final double co2SavedKg;
   final int rank;
+  final String? photoUrl;
 
   const LeaderboardEntry({
     required this.userId,
@@ -11,6 +12,7 @@ class LeaderboardEntry {
     required this.points,
     required this.co2SavedKg,
     required this.rank,
+    this.photoUrl,
   });
 
   factory LeaderboardEntry.fromMap(String id, Map<String, dynamic> map) {
@@ -20,6 +22,7 @@ class LeaderboardEntry {
       points: (map['points'] as num?)?.toInt() ?? 0,
       co2SavedKg: (map['co2_saved_kg'] as num?)?.toDouble() ?? 0.0,
       rank: (map['rank'] as num?)?.toInt() ?? 999,
+      photoUrl: map['photo_url'] as String?,
     );
   }
 }

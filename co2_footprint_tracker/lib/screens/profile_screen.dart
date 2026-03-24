@@ -59,7 +59,10 @@ class ProfileScreen extends ConsumerWidget {
                         CircleAvatar(
                           radius: 32,
                           backgroundColor: Colors.white.withValues(alpha: 0.25),
-                          child: Text(initial, style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                          backgroundImage: user?.photoUrl != null ? NetworkImage(user!.photoUrl!) : null,
+                          child: user?.photoUrl == null
+                              ? Text(initial, style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white))
+                              : null,
                         ),
                         const SizedBox(width: 16),
                         Expanded(

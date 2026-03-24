@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class UserModel {
   final String? displayName;
   final String email;
+  final String? photoUrl;
   final String? country;
   final String? homeType;
   final String? dietType;
@@ -18,6 +19,7 @@ class UserModel {
   UserModel({
     this.displayName,
     required this.email,
+    this.photoUrl,
     this.country,
     this.homeType,
     this.dietType,
@@ -35,6 +37,7 @@ class UserModel {
     return UserModel(
       displayName: map['display_name'] as String?,
       email: map['email'] as String? ?? '',
+      photoUrl: map['photo_url'] as String?,
       country: map['country'] as String?,
       homeType: map['home_type'] as String?,
       dietType: map['diet_type'] as String?,
@@ -55,6 +58,7 @@ class UserModel {
     return {
       'display_name': displayName,
       'email': email,
+      'photo_url': photoUrl,
       'country': country,
       'home_type': homeType,
       'diet_type': dietType,
@@ -72,6 +76,7 @@ class UserModel {
   UserModel copyWith({
     String? displayName,
     String? email,
+    String? photoUrl,
     String? country,
     String? homeType,
     String? dietType,
@@ -87,6 +92,7 @@ class UserModel {
     return UserModel(
       displayName: displayName ?? this.displayName,
       email: email ?? this.email,
+      photoUrl: photoUrl ?? this.photoUrl,
       country: country ?? this.country,
       homeType: homeType ?? this.homeType,
       dietType: dietType ?? this.dietType,

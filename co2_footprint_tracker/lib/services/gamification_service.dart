@@ -53,11 +53,13 @@ class GamificationService {
       final newPoints = (data['points'] as num?)?.toInt() ?? 0;
       final co2 = (data['total_co2_kg'] as num?)?.toDouble() ?? 0.0;
       final name = data['display_name'] as String? ?? 'User';
+      final photo = data['photo_url'] as String?;
       _leaderboardService.updateUserEntry(
         userId: userId,
         displayName: name,
         totalPoints: newPoints,
         totalCo2SavedKg: co2,
+        photoUrl: photo,
       );
     }).catchError((_) {}); // Silently ignore leaderboard errors
   }

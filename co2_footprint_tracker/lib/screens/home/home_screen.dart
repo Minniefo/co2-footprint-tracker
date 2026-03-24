@@ -201,14 +201,19 @@ class HomeDashboard extends ConsumerWidget {
                           child: CircleAvatar(
                             radius: 24,
                             backgroundColor: Colors.green.shade100,
-                            child: Text(
-                              initial,
-                              style: GoogleFonts.inter(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade800,
-                              ),
-                            ),
+                            backgroundImage: userModel?.photoUrl != null
+                                ? NetworkImage(userModel!.photoUrl!)
+                                : null,
+                            child: userModel?.photoUrl == null
+                                ? Text(
+                                    initial,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green.shade800,
+                                    ),
+                                  )
+                                : null,
                           ),
                         ),
                       ],
