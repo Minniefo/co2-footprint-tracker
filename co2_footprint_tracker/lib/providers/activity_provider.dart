@@ -6,18 +6,19 @@ import '../models/activity.dart';
 import '../services/activity_service.dart';
 import 'auth_provider.dart';
 import 'emission_factors_provider.dart';
+import 'gamification_provider.dart';
 
 final activityServiceProvider = Provider<ActivityService>((ref) {
   final firestore = ref.watch(firestoreProvider);
   return ActivityService(firestore);
 });
 
-final userActivitiesProvider = FutureProvider<List<Activity>>((ref) async {
+final userActivitiesProvider = StreamProvider<List<Activity>>((ref) {
   final user = ref.watch(authStateChangesProvider).value;
-  if (user == null) return [];
+  if (user == null) return Stream.value([]);
   
   final service = ref.watch(activityServiceProvider);
-  return service.getUserActivities(user.uid);
+  return service.streamUserActivities(user.uid);
 });
 
 class ActivityController extends AsyncNotifier<void> {
@@ -67,6 +68,18 @@ class ActivityController extends AsyncNotifier<void> {
       
       // Refresh activities
       ref.invalidate(userActivitiesProvider);
+
+      // Update Streak
+      await ref.read(gamificationServiceProvider).updateStreak(user.uid);
+
+      // Award Points
+      await ref.read(gamificationControllerProvider.notifier).awardPointsAndCheckBadges(
+        type: 'activity_saved',
+        amount: 10,
+        reason: 'Logged transport activity',
+        activityRef: docId,
+      );
+
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);
@@ -104,6 +117,18 @@ class ActivityController extends AsyncNotifier<void> {
 
       await ref.read(activityServiceProvider).saveActivity(activity);
       ref.invalidate(userActivitiesProvider);
+
+      // Update Streak
+      await ref.read(gamificationServiceProvider).updateStreak(user.uid);
+
+      // Award Points
+      await ref.read(gamificationControllerProvider.notifier).awardPointsAndCheckBadges(
+        type: 'activity_saved',
+        amount: 10,
+        reason: 'Logged food activity',
+        activityRef: docId,
+      );
+
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);
@@ -140,6 +165,18 @@ class ActivityController extends AsyncNotifier<void> {
 
       await ref.read(activityServiceProvider).saveActivity(activity);
       ref.invalidate(userActivitiesProvider);
+
+      // Update Streak
+      await ref.read(gamificationServiceProvider).updateStreak(user.uid);
+
+      // Award Points
+      await ref.read(gamificationControllerProvider.notifier).awardPointsAndCheckBadges(
+        type: 'activity_saved',
+        amount: 10,
+        reason: 'Logged energy activity',
+        activityRef: docId,
+      );
+
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);

@@ -76,7 +76,6 @@ class AuthController extends Notifier<AuthState> {
       final userDocData = userData.copyWith(
         email: email,
         createdAt: Timestamp.now(),
-        lastActiveAt: Timestamp.now(),
         totalCo2Kg: 0.0,
         points: 0,
         streak: 0,
@@ -108,7 +107,26 @@ class AuthController extends Notifier<AuthState> {
   Future<bool> loginWithGoogle() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      await ref.read(authServiceProvider).signInWithGoogle();
+      final userCred = await ref.read(authServiceProvider).signInWithGoogle();
+      final user = userCred.user;
+      if (user != null) {
+        final existingDoc = await ref.read(firestoreProvider).collection('users').doc(user.uid).get();
+        if (!existingDoc.exists) {
+          final userDocData = UserModel(
+            email: user.email ?? '',
+            displayName: user.displayName,
+            createdAt: Timestamp.now(),
+            totalCo2Kg: 0.0,
+            points: 0,
+            streak: 0,
+            privacy: PrivacySettings(shareRank: true, shareActivityDetails: false),
+          );
+          await ref.read(authServiceProvider).createUserDocument(
+            userId: user.uid,
+            userData: userDocData,
+          );
+        }
+      }
       state = state.copyWith(isLoading: false, clearError: true);
       return true;
     } on FirebaseAuthException catch (e) {
