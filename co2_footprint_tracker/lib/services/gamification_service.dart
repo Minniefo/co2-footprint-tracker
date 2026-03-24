@@ -2,11 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/point_transaction.dart';
 import '../models/badge.dart';
 import '../models/user_badge.dart';
+import 'leaderboard_service.dart';
 
 class GamificationService {
   final FirebaseFirestore _firestore;
+  final LeaderboardService _leaderboardService;
 
-  GamificationService(this._firestore);
+  GamificationService(this._firestore)
+      : _leaderboardService = LeaderboardService(_firestore);
 
   Future<void> awardPoints({
     required String userId,
@@ -41,6 +44,22 @@ class GamificationService {
 
       transaction.set(txRef, tx.toMap());
     });
+
+    // 3. Update leaderboard entry in background (non-blocking)
+    //    Fetch latest user data to pass accurate totals.
+    _firestore.collection('users').doc(userId).get().then((snap) {
+      final data = snap.data();
+      if (data == null) return;
+      final newPoints = (data['points'] as num?)?.toInt() ?? 0;
+      final co2 = (data['total_co2_kg'] as num?)?.toDouble() ?? 0.0;
+      final name = data['display_name'] as String? ?? 'User';
+      _leaderboardService.updateUserEntry(
+        userId: userId,
+        displayName: name,
+        totalPoints: newPoints,
+        totalCo2SavedKg: co2,
+      );
+    }).catchError((_) {}); // Silently ignore leaderboard errors
   }
 
   Stream<List<PointTransaction>> streamPointHistory(String userId) {

@@ -11,6 +11,7 @@ import '../auth/login_screen.dart';
 import '../gamification/gamification_screen.dart';
 import '../community/community_screen.dart';
 import '../../screens/profile_screen.dart';
+import '../../screens/leaderboard_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -527,14 +528,4 @@ class HomeDashboard extends ConsumerWidget {
   }
 }
 
-// Placeholder screens for other tabs
-class LeaderboardScreen extends StatelessWidget {
-  const LeaderboardScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Leaderboard Screen')),
-    );
-  }
-}
+// end of file
