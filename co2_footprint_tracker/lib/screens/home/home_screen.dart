@@ -10,7 +10,7 @@ import '../activity/add_activity_screen.dart';
 import '../auth/login_screen.dart';
 import '../gamification/gamification_screen.dart';
 import '../community/community_screen.dart';
-import '../community/my_posts_screen.dart';
+import '../../screens/profile_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -87,14 +87,6 @@ class HomeDashboard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = FirebaseAuth.instance.currentUser;
-
-    final displayName = (user?.displayName?.isNotEmpty == true)
-        ? user!.displayName!
-        : ((user?.email?.isNotEmpty == true) ? user!.email!.split('@')[0] : 'Eco Warrior');
-
-    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
-
     final userAsync = ref.watch(userDocumentProvider);
     final activitiesAsync = ref.watch(userActivitiesProvider);
     
@@ -128,6 +120,13 @@ class HomeDashboard extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => Center(child: Text('Error: $err')),
           data: (userModel) {
+            // Use Firestore display_name first (real-time), fall back to Firebase Auth
+            final firebaseUser = FirebaseAuth.instance.currentUser;
+            final displayName = (userModel?.displayName?.isNotEmpty == true)
+                ? userModel!.displayName!
+                : ((firebaseUser?.email?.isNotEmpty == true) ? firebaseUser!.email!.split('@')[0] : 'Eco Warrior');
+            final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+
             final points = userModel?.points ?? 0;
             final streak = userModel?.streak ?? 0;
 
@@ -536,33 +535,6 @@ class LeaderboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(child: Text('Leaderboard Screen')),
-    );
-  }
-}
-
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          const Icon(Icons.person, size: 80, color: Colors.green),
-          const SizedBox(height: 24),
-          ListTile(
-            leading: const Icon(Icons.article),
-            title: const Text('My Posts'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPostsScreen()));
-            },
-          ),
-          const Divider(),
-        ],
-      ),
     );
   }
 }
