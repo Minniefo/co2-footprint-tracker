@@ -8,6 +8,7 @@ import '../../providers/community_provider.dart';
 import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
 import 'edit_post_screen.dart';
+import '../../screens/public_profile_screen.dart'; // Added import
 
 const _kBg = Color(0xFFF8FAFC);
 const _kGreen = Color(0xFF2E7D32);
@@ -182,7 +183,10 @@ class PostCard extends ConsumerWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Avatar(name: post.isRepost ? (post.originalAuthorName ?? 'User') : post.authorName, avatarUrl: post.authorAvatar),
+                    GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PublicProfileScreen(uid: post.authorId))),
+                      child: _Avatar(name: post.isRepost ? (post.originalAuthorName ?? 'User') : post.authorName, avatarUrl: post.authorAvatar),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
