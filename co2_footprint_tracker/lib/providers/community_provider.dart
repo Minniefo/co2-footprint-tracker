@@ -157,11 +157,13 @@ class CommunityActionController extends AsyncNotifier<void> {
 
       final userDoc = await ref.read(firestoreProvider).collection('users').doc(user.uid).get();
       final displayName = userDoc.data()?['display_name'] as String? ?? 'User';
+      final photoUrl = userDoc.data()?['photo_url'] as String?;
 
       final newPost = CommunityPost(
         id: ref.read(firestoreProvider).collection('community_posts').doc().id,
         authorId: user.uid,
         authorName: displayName,
+        authorAvatar: photoUrl,
         content: content,
         createdAt: Timestamp.now(),
       );
@@ -237,11 +239,13 @@ class CommunityActionController extends AsyncNotifier<void> {
 
       final userDoc = await ref.read(firestoreProvider).collection('users').doc(user.uid).get();
       final displayName = userDoc.data()?['display_name'] as String? ?? 'User';
+      final photoUrl = userDoc.data()?['photo_url'] as String?;
 
       final newComment = PostComment(
         id: ref.read(firestoreProvider).collection('community_posts').doc(post.id).collection('comments').doc().id,
         authorId: user.uid,
         authorName: displayName,
+        authorAvatar: photoUrl,
         content: content,
         createdAt: Timestamp.now(),
       );
