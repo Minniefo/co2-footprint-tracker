@@ -270,27 +270,51 @@ class _PrivacyCard extends ConsumerWidget {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: _kCardShadow),
       child: Column(
         children: [
+          // Master toggle — Public Account
           _PrivacyToggle(
-            icon: Icons.leaderboard_rounded,
-            color: _kGreen,
-            label: 'Share Rank',
-            subtitle: 'Let others see your leaderboard rank',
-            value: privacy.shareRank,
+            icon: Icons.public_rounded,
+            color: Colors.teal.shade600,
+            label: 'Public Account',
+            subtitle: 'Allow others to view your profile',
+            value: privacy.isPublic,
             onChanged: (v) => ref.read(profileControllerProvider.notifier).updatePrivacy(
-              shareRank: v,
+              isPublic: v,
+              shareRank: privacy.shareRank,
               shareActivityDetails: privacy.shareActivityDetails,
             ),
           ),
           _divider(),
-          _PrivacyToggle(
-            icon: Icons.directions_car_rounded,
-            color: Colors.blue.shade600,
-            label: 'Share Activity Details',
-            subtitle: 'Let others see your logged activities',
-            value: privacy.shareActivityDetails,
-            onChanged: (v) => ref.read(profileControllerProvider.notifier).updatePrivacy(
-              shareRank: privacy.shareRank,
-              shareActivityDetails: v,
+          // Sub-toggles (dimmed when account is private)
+          Opacity(
+            opacity: privacy.isPublic ? 1.0 : 0.45,
+            child: Column(
+              children: [
+                _PrivacyToggle(
+                  icon: Icons.leaderboard_rounded,
+                  color: _kGreen,
+                  label: 'Share Rank',
+                  subtitle: 'Let others see your leaderboard rank',
+                  value: privacy.shareRank,
+                  onChanged: (v) => ref.read(profileControllerProvider.notifier).updatePrivacy(
+                    isPublic: privacy.isPublic,
+                    shareRank: v,
+                    shareActivityDetails: privacy.shareActivityDetails,
+                  ),
+                ),
+                _divider(),
+                _PrivacyToggle(
+                  icon: Icons.directions_car_rounded,
+                  color: Colors.blue.shade600,
+                  label: 'Share Activity Details',
+                  subtitle: 'Let others see your logged activities',
+                  value: privacy.shareActivityDetails,
+                  onChanged: (v) => ref.read(profileControllerProvider.notifier).updatePrivacy(
+                    isPublic: privacy.isPublic,
+                    shareRank: privacy.shareRank,
+                    shareActivityDetails: v,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

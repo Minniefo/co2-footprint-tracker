@@ -41,12 +41,12 @@ class ProfileController extends AsyncNotifier<void> {
     }
   }
 
-  Future<void> updatePrivacy({required bool shareRank, required bool shareActivityDetails}) async {
+  Future<void> updatePrivacy({required bool isPublic, required bool shareRank, required bool shareActivityDetails}) async {
     state = const AsyncLoading();
     try {
       final uid = ref.read(firebaseAuthProvider).currentUser?.uid;
       if (uid == null) throw Exception('Not logged in');
-      await ref.read(userServiceProvider).updatePrivacy(uid, shareRank: shareRank, shareActivityDetails: shareActivityDetails);
+      await ref.read(userServiceProvider).updatePrivacy(uid, isPublic: isPublic, shareRank: shareRank, shareActivityDetails: shareActivityDetails);
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);

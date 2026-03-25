@@ -35,9 +35,14 @@ class UserService {
     }
   }
 
-  Future<void> updatePrivacy(String userId, {required bool shareRank, required bool shareActivityDetails}) async {
+  Future<void> updatePrivacy(String userId, {
+    required bool isPublic,
+    required bool shareRank,
+    required bool shareActivityDetails,
+  }) async {
     await _firestore.collection('users').doc(userId).update({
       'privacy': {
+        'is_public': isPublic,
         'share_rank': shareRank,
         'share_activity_details': shareActivityDetails,
       },

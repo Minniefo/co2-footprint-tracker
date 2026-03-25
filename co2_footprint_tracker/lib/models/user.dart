@@ -109,16 +109,19 @@ class UserModel {
 }
 
 class PrivacySettings {
+  final bool isPublic;
   final bool shareRank;
   final bool shareActivityDetails;
 
   PrivacySettings({
+    this.isPublic = true,
     required this.shareRank,
     required this.shareActivityDetails,
   });
 
   factory PrivacySettings.fromMap(Map<String, dynamic> map) {
     return PrivacySettings(
+      isPublic: map['is_public'] as bool? ?? true,
       shareRank: map['share_rank'] as bool? ?? true,
       shareActivityDetails: map['share_activity_details'] as bool? ?? false,
     );
@@ -126,6 +129,7 @@ class PrivacySettings {
 
   Map<String, dynamic> toMap() {
     return {
+      'is_public': isPublic,
       'share_rank': shareRank,
       'share_activity_details': shareActivityDetails,
     };

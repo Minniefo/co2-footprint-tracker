@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../models/community_post.dart';
 import '../../providers/community_provider.dart';
+import '../public_profile_screen.dart';
 
 const _kGreen = Color(0xFF2E7D32);
 const _kBg = Color(0xFFF8FAFC);
@@ -79,7 +80,10 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                       children: [
                         Row(
                           children: [
-                            _Avatar(name: widget.post.authorName, avatarUrl: widget.post.authorAvatar, radius: 22),
+                            GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PublicProfileScreen(uid: widget.post.authorId))),
+                              child: _Avatar(name: widget.post.authorName, avatarUrl: widget.post.authorAvatar, radius: 22),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -154,7 +158,10 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _Avatar(name: c.authorName, avatarUrl: c.authorAvatar, radius: 16),
+                                GestureDetector(
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PublicProfileScreen(uid: c.authorId))),
+                                  child: _Avatar(name: c.authorName, avatarUrl: c.authorAvatar, radius: 16),
+                                ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/leaderboard_provider.dart';
 import '../models/leaderboard_entry.dart';
+import 'public_profile_screen.dart';
 
 const _kBg = Color(0xFFF8FAFC);
 const _kGreen = Color(0xFF2E7D32);
@@ -174,55 +175,58 @@ class _PodiumSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double avatarRadius = large ? 26 : 20;
-    return Column(
-      children: [
-        Text(label, style: TextStyle(fontSize: large ? 32 : 24)),
-        const SizedBox(height: 6),
-        CircleAvatar(
-          radius: avatarRadius,
-          backgroundImage: entry.photoUrl != null ? NetworkImage(entry.photoUrl!) : null,
-          backgroundColor: podiumColor.withValues(alpha: 0.15),
-          child: entry.photoUrl == null
-              ? Text(
-                  entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: podiumColor, fontSize: avatarRadius * 0.9),
-                )
-              : null,
-        ),
-        const SizedBox(height: 6),
-        Text(
-          entry.displayName,
-          style: GoogleFonts.inter(fontSize: large ? 13 : 11, fontWeight: FontWeight.w700, color: Colors.black87),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-        ),
-        if (isMe)
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PublicProfileScreen(uid: entry.userId))),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontSize: large ? 32 : 24)),
+          const SizedBox(height: 6),
+          CircleAvatar(
+            radius: avatarRadius,
+            backgroundImage: entry.photoUrl != null ? NetworkImage(entry.photoUrl!) : null,
+            backgroundColor: podiumColor.withValues(alpha: 0.15),
+            child: entry.photoUrl == null
+                ? Text(
+                    entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: podiumColor, fontSize: avatarRadius * 0.9),
+                  )
+                : null,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            entry.displayName,
+            style: GoogleFonts.inter(fontSize: large ? 13 : 11, fontWeight: FontWeight.w700, color: Colors.black87),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+          if (isMe)
+            Container(
+              margin: const EdgeInsets.only(top: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: _kGreen, borderRadius: BorderRadius.circular(8)),
+              child: Text('You', style: GoogleFonts.inter(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          const SizedBox(height: 6),
           Container(
-            margin: const EdgeInsets.only(top: 3),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(color: _kGreen, borderRadius: BorderRadius.circular(8)),
-            child: Text('You', style: GoogleFonts.inter(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+            height: height,
+            decoration: BoxDecoration(
+              color: podiumColor,
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+            ),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('${entry.points}', style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: large ? 18 : 14, color: Colors.white)),
+                Text('pts', style: GoogleFonts.inter(fontSize: 10, color: Colors.white.withValues(alpha: 0.8))),
+                const SizedBox(height: 2),
+                Text('${entry.co2SavedKg.toStringAsFixed(1)}kg', style: GoogleFonts.inter(fontSize: 10, color: Colors.white.withValues(alpha: 0.75))),
+              ],
+            ),
           ),
-        const SizedBox(height: 6),
-        Container(
-          height: height,
-          decoration: BoxDecoration(
-            color: podiumColor,
-            borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
-          ),
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('${entry.points}', style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: large ? 18 : 14, color: Colors.white)),
-              Text('pts', style: GoogleFonts.inter(fontSize: 10, color: Colors.white.withValues(alpha: 0.8))),
-              const SizedBox(height: 2),
-              Text('${entry.co2SavedKg.toStringAsFixed(1)}kg', style: GoogleFonts.inter(fontSize: 10, color: Colors.white.withValues(alpha: 0.75))),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -258,90 +262,51 @@ class _TableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: isCurrentUser ? _kGreen.withValues(alpha: 0.05) : null,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          // Rank badge
-          SizedBox(
-            width: 40,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              decoration: BoxDecoration(
-                color: isCurrentUser ? _kGreen.withValues(alpha: 0.12) : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                '${entry.rank}',
-                style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 13, color: isCurrentUser ? _kGreen : Colors.grey.shade600),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-
-          // Avatar + name
-          CircleAvatar(
-            radius: 16,
-            backgroundImage: entry.photoUrl != null ? NetworkImage(entry.photoUrl!) : null,
-            backgroundColor: (isCurrentUser ? _kGreen : Colors.blueGrey).withValues(alpha: 0.15),
-            child: entry.photoUrl == null
-                ? Text(
-                    entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?',
-                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: isCurrentUser ? _kGreen : Colors.blueGrey.shade600),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        entry.displayName,
-                        style: GoogleFonts.inter(fontWeight: isCurrentUser ? FontWeight.w800 : FontWeight.w600, fontSize: 14, color: isCurrentUser ? _kGreen : Colors.black87),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (isCurrentUser) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(color: _kGreen, borderRadius: BorderRadius.circular(6)),
-                        child: Text('You', style: GoogleFonts.inter(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ],
+    return InkWell(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PublicProfileScreen(uid: entry.userId))),
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        color: isCurrentUser ? _kGreen.withValues(alpha: 0.05) : null,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 40,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: isCurrentUser ? _kGreen.withValues(alpha: 0.12) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
+                alignment: Alignment.center,
+                child: Text('${entry.rank}', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 13, color: isCurrentUser ? _kGreen : Colors.grey.shade600)),
+              ),
             ),
-          ),
-
-          // CO₂ saved
-          SizedBox(
-            width: 64,
-            child: Text(
-              '${entry.co2SavedKg.toStringAsFixed(1)} kg',
-              style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
-              textAlign: TextAlign.center,
+            const SizedBox(width: 8),
+            CircleAvatar(
+              radius: 16,
+              backgroundImage: entry.photoUrl != null ? NetworkImage(entry.photoUrl!) : null,
+              backgroundColor: (isCurrentUser ? _kGreen : Colors.blueGrey).withValues(alpha: 0.15),
+              child: entry.photoUrl == null
+                  ? Text(entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: isCurrentUser ? _kGreen : Colors.blueGrey.shade600))
+                  : null,
             ),
-          ),
-
-          // Points
-          SizedBox(
-            width: 60,
-            child: Text(
-              '${entry.points}',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 15, color: isCurrentUser ? _kGreen : Colors.black87),
-              textAlign: TextAlign.right,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(child: Text(entry.displayName, style: GoogleFonts.inter(fontWeight: isCurrentUser ? FontWeight.w800 : FontWeight.w600, fontSize: 14, color: isCurrentUser ? _kGreen : Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  if (isCurrentUser) ...[
+                    const SizedBox(width: 6),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: _kGreen, borderRadius: BorderRadius.circular(6)), child: Text('You', style: GoogleFonts.inter(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold))),
+                  ],
+                ],
+              ),
             ),
-          ),
-        ],
+            SizedBox(width: 64, child: Text('${entry.co2SavedKg.toStringAsFixed(1)} kg', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600), textAlign: TextAlign.center)),
+            SizedBox(width: 60, child: Text('${entry.points}', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 15, color: isCurrentUser ? _kGreen : Colors.black87), textAlign: TextAlign.right)),
+          ],
+        ),
       ),
     );
   }
