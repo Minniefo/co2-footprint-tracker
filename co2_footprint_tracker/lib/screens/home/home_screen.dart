@@ -2,10 +2,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/activity_provider.dart';
+import '../../providers/navigation_provider.dart';
 import '../activity/add_activity_screen.dart';
 import '../auth/login_screen.dart';
 import '../gamification/gamification_screen.dart';
@@ -21,8 +23,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _currentIndex = 0;
-
   final List<Widget> _screens = [
     const HomeDashboard(),
     const AddActivityScreen(),
@@ -33,51 +33,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = ref.watch(navigationProvider);
+
     return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: Colors.green.shade700,
-          unselectedItemColor: Colors.grey.shade400,
-          selectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 12),
-          unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 12),
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.add_circle),
-              label: 'Add',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.people_alt_rounded),
-              label: 'Community',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.leaderboard_rounded),
-              label: 'Rank',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
-              label: 'Profile',
-            ),
-          ],
-        ),
+      backgroundColor: const Color(0xFFF8FAFC),
+      extendBody: true, // Important for the curved bar to show background properly
+      body: IndexedStack(
+        index: currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: CurvedNavigationBar(
+        index: currentIndex,
+        height: 55,
+        items: const [
+          Icon(Icons.home_rounded, size: 30, color: Colors.white),
+          Icon(Icons.add_rounded, size: 30, color: Colors.white),
+          Icon(Icons.people_rounded, size: 30, color: Colors.white),
+          Icon(Icons.leaderboard_rounded, size: 30, color: Colors.white),
+          Icon(Icons.person_rounded, size: 30, color: Colors.white),
+        ],
+        color: Colors.green.shade700,
+        buttonBackgroundColor: Colors.green.shade700,
+        backgroundColor: Colors.transparent, // Background of the gap
+        animationCurve: Curves.easeInOutBack,
+        animationDuration: const Duration(milliseconds: 350),
+        onTap: (index) => ref.read(navigationProvider.notifier).state = index,
+        letIndexChange: (index) => true,
       ),
     );
   }
