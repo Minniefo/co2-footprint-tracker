@@ -38,9 +38,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       extendBody: true, // Important for the curved bar to show background properly
-      body: IndexedStack(
-        index: currentIndex,
-        children: _screens,
+      body: Padding(
+        padding: const EdgeInsets.only(bottom: 60),
+        child: IndexedStack(
+          index: currentIndex,
+          children: _screens,
+        ),
       ),
       bottomNavigationBar: CurvedNavigationBar(
         index: currentIndex,

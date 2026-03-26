@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -81,12 +82,13 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
   final _formKey = GlobalKey<FormState>();
   String _transportMode = 'car_petrol';
   final _distanceController = TextEditingController();
-
+  
   LatLng? _startLocation;
   LatLng? _endLocation;
+  List<LatLng> _polyline = [];
   bool _isCalculatingRoute = false;
   final MapController _mapController = MapController();
-  final LatLng _defaultCenter = const LatLng(51.5074, -0.1278); // London default
+  final LatLng _defaultCenter = const LatLng(51.5074, -0.1278);
 
   final List<Map<String, String>> _modes = [
     {'value': 'car_petrol', 'label': 'Petrol Car', 'icon': '🚗'},
@@ -112,26 +114,6 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
     super.dispose();
   }
 
-  void _handleMapTap(TapPosition tapPosition, LatLng point) async {
-    if (_startLocation == null) {
-      setState(() {
-        _startLocation = point;
-        _endLocation = null;
-      });
-    } else if (_endLocation == null) {
-      setState(() {
-        _endLocation = point;
-      });
-      await _calculateRoute();
-    } else {
-      setState(() {
-        _startLocation = point;
-        _endLocation = null;
-        _distanceController.clear();
-      });
-    }
-  }
-
   Future<void> _calculateRoute() async {
     if (_startLocation == null || _endLocation == null) return;
     
@@ -147,14 +129,19 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
       
       setState(() {
         _distanceController.text = routeInfo.distanceKm.toStringAsFixed(1);
+        _polyline = routeInfo.polyline;
         _isCalculatingRoute = false;
       });
+
+      // Fit map to show both points
+      if (_polyline.isNotEmpty) {
+        final bounds = LatLngBounds.fromPoints(_polyline);
+        _mapController.fitCamera(CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(50)));
+      }
     } catch (e) {
       setState(() => _isCalculatingRoute = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to calculate route: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to calculate route: $e')));
       }
     }
   }
@@ -166,25 +153,22 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
       await ref.read(activityControllerProvider.notifier).logTransportActivity(
             transportMode: _transportMode,
             distanceKm: double.parse(_distanceController.text),
-            startArea: _startLocation != null ? '${_startLocation!.latitude.toStringAsFixed(3)}, ${_startLocation!.longitude.toStringAsFixed(3)}' : null,
-            endArea: _endLocation != null ? '${_endLocation!.latitude.toStringAsFixed(3)}, ${_endLocation!.longitude.toStringAsFixed(3)}' : null,
+            startArea: _startLocation != null ? '${_startLocation!.latitude}, ${_startLocation!.longitude}' : null,
+            endArea: _endLocation != null ? '${_endLocation!.latitude}, ${_endLocation!.longitude}' : null,
           );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transport activity logged!')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transport activity logged!')));
         setState(() {
           _distanceController.clear();
           _startLocation = null;
           _endLocation = null;
+          _polyline = [];
         });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -197,13 +181,13 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
 
     return calcAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Center(child: Text('Error loading calculator: $err')),
+      error: (err, stack) => Center(child: Text('Error: $err')),
       data: (calc) {
         final dist = double.tryParse(_distanceController.text) ?? 0.0;
         final currentCo2 = calc.calculateTransport(_transportMode, dist);
         final impact = calc.getImpactLevel(currentCo2);
 
-        return Padding(
+        return SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
           child: Form(
             key: _formKey,
@@ -214,33 +198,52 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
                   value: _transportMode,
                   decoration: InputDecoration(
                     labelText: 'Transport Mode',
-                    labelStyle: GoogleFonts.inter(),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.commute),
                   ),
-                  items: _modes.map((mode) {
-                    return DropdownMenuItem(
-                      value: mode['value'],
-                      child: Text('${mode['icon']} ${mode['label']}'),
-                    );
-                  }).toList(),
+                  items: _modes.map((mode) => DropdownMenuItem(
+                    value: mode['value'],
+                    child: Text('${mode['icon']} ${mode['label']}'),
+                  )).toList(),
                   onChanged: (val) {
                     if (val != null) {
                       setState(() => _transportMode = val);
+                      if (_startLocation != null && _endLocation != null) _calculateRoute();
                     }
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 
-                Text(
-                  'Select Route (Tap Start & End)',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13),
+                LocationSearchField(
+                  label: 'Start Location',
+                  icon: Icons.location_on,
+                  iconColor: Colors.green,
+                  onSelected: (lat, lng) {
+                    setState(() {
+                      _startLocation = LatLng(lat, lng);
+                    });
+                    if (_endLocation != null) _calculateRoute();
+                  },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                LocationSearchField(
+                  label: 'End Location',
+                  icon: Icons.location_on,
+                  iconColor: Colors.red,
+                  onSelected: (lat, lng) {
+                    setState(() {
+                      _endLocation = LatLng(lat, lng);
+                    });
+                    if (_startLocation != null) _calculateRoute();
+                  },
+                ),
+                const SizedBox(height: 20),
+                
                 Container(
-                  height: 160,
+                  height: 200,
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
@@ -249,28 +252,37 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
                       options: MapOptions(
                         initialCenter: _defaultCenter,
                         initialZoom: 12.0,
-                        onTap: _handleMapTap,
                       ),
                       children: [
                         TileLayer(
                           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.example.co2_footprint_tracker',
                         ),
+                        if (_polyline.isNotEmpty)
+                          PolylineLayer(
+                            polylines: [
+                              Polyline(
+                                points: _polyline,
+                                color: Colors.blue,
+                                strokeWidth: 4,
+                              ),
+                            ],
+                          ),
                         MarkerLayer(
                           markers: [
                             if (_startLocation != null)
                               Marker(
                                 point: _startLocation!,
-                                width: 30,
-                                height: 30,
-                                child: const Icon(Icons.location_on, color: Colors.green, size: 30),
+                                width: 40,
+                                height: 40,
+                                child: const Icon(Icons.location_on, color: Colors.green, size: 40),
                               ),
                             if (_endLocation != null)
                               Marker(
                                 point: _endLocation!,
-                                width: 30,
-                                height: 30,
-                                child: const Icon(Icons.location_on, color: Colors.red, size: 30),
+                                width: 40,
+                                height: 40,
+                                child: const Icon(Icons.location_on, color: Colors.red, size: 40),
                               ),
                           ],
                         ),
@@ -278,20 +290,15 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
                     ),
                   ),
                 ),
-                if (_isCalculatingRoute)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 4.0),
-                    child: LinearProgressIndicator(minHeight: 2),
-                  ),
-                const SizedBox(height: 16),
                 
+                const SizedBox(height: 20),
                 TextFormField(
                   controller: _distanceController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     labelText: 'Distance (km)',
-                    hintText: 'Enter or use map above',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    suffixText: 'km',
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Enter distance';
@@ -301,33 +308,122 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 20),
-                
-                // Impact Preview
                 _ImpactPreview(co2Kg: currentCo2, level: impact),
-
-                const Spacer(),
+                const SizedBox(height: 30),
                 ElevatedButton(
                   onPressed: isLoading || _isCalculatingRoute ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: Colors.green.shade700,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
                   ),
                   child: isLoading
                       ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : Text(
-                          'Log Transport Activity',
-                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
+                      : Text('Log Transport Activity', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class LocationSearchField extends ConsumerStatefulWidget {
+  final String label;
+  final IconData icon;
+  final Color iconColor;
+  final Function(double lat, double lng) onSelected;
+
+  const LocationSearchField({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.iconColor,
+    required this.onSelected,
+  });
+
+  @override
+  ConsumerState<LocationSearchField> createState() => _LocationSearchFieldState();
+}
+
+class _LocationSearchFieldState extends ConsumerState<LocationSearchField> {
+  final TextEditingController _controller = TextEditingController();
+  List<Map<String, dynamic>> _suggestions = [];
+  bool _isLoading = false;
+  Timer? _debounce;
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      if (query.length < 3) {
+        setState(() => _suggestions = []);
+        return;
+      }
+
+      setState(() => _isLoading = true);
+      final results = await ref.read(mapboxServiceProvider).getSuggestions(query);
+      setState(() {
+        _suggestions = results;
+        _isLoading = false;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TextField(
+          controller: _controller,
+          onChanged: _onSearchChanged,
+          decoration: InputDecoration(
+            labelText: widget.label,
+            prefixIcon: Icon(widget.icon, color: widget.iconColor),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            suffixIcon: _isLoading 
+                ? const SizedBox(width: 20, height: 20, child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2)))
+                : null,
+          ),
+        ),
+        if (_suggestions.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, 5))],
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _suggestions.length,
+              itemBuilder: (context, index) {
+                final suggestion = _suggestions[index];
+                return ListTile(
+                  title: Text(suggestion['text'], style: GoogleFonts.inter(fontSize: 14)),
+                  onTap: () {
+                    final center = suggestion['center'] as List;
+                    widget.onSelected(center[1].toDouble(), center[0].toDouble());
+                    setState(() {
+                      _controller.text = suggestion['text'];
+                      _suggestions = [];
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }
