@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../providers/activity_provider.dart';
 import '../../providers/mapbox_provider.dart';
+import '../../services/co2_calculator.dart';
 
 class AddActivityScreen extends ConsumerStatefulWidget {
   const AddActivityScreen({super.key});
@@ -46,13 +47,14 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen>
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.green,
+          labelColor: Colors.green.shade700,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.green,
+          indicatorColor: Colors.green.shade700,
+          labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
           tabs: const [
-            Tab(icon: Icon(Icons.directions_car), text: 'Transport'),
-            Tab(icon: Icon(Icons.restaurant), text: 'Food'),
-            Tab(icon: Icon(Icons.bolt), text: 'Energy'),
+            Tab(icon: Icon(Icons.directions_car_rounded), text: 'Transport'),
+            Tab(icon: Icon(Icons.restaurant_rounded), text: 'Food'),
+            Tab(icon: Icon(Icons.bolt_rounded), text: 'Energy'),
           ],
         ),
       ),
@@ -77,7 +79,7 @@ class TransportActivityForm extends ConsumerStatefulWidget {
 
 class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
   final _formKey = GlobalKey<FormState>();
-  String _transportMode = 'car';
+  String _transportMode = 'car_petrol';
   final _distanceController = TextEditingController();
 
   LatLng? _startLocation;
@@ -86,15 +88,23 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
   final MapController _mapController = MapController();
   final LatLng _defaultCenter = const LatLng(51.5074, -0.1278); // London default
 
-  final List<String> _modes = [
-    'car',
-    'bus',
-    'train',
-    'flight_short',
-    'flight_long',
-    'bike',
-    'walk',
+  final List<Map<String, String>> _modes = [
+    {'value': 'car_petrol', 'label': 'Petrol Car', 'icon': '🚗'},
+    {'value': 'car_diesel', 'label': 'Diesel Car', 'icon': '🚙'},
+    {'value': 'car_ev', 'label': 'Electric Car', 'icon': '⚡'},
+    {'value': 'bus', 'label': 'Bus', 'icon': '🚌'},
+    {'value': 'train', 'label': 'Train', 'icon': '🚆'},
+    {'value': 'flight_short', 'label': 'Short Flight (<3h)', 'icon': '✈️'},
+    {'value': 'flight_long', 'label': 'Long Flight (>3h)', 'icon': '🗺️'},
+    {'value': 'bike', 'label': 'Bicycle', 'icon': '🚲'},
+    {'value': 'walk', 'label': 'Walking', 'icon': '🚶'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _distanceController.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
@@ -129,7 +139,6 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
 
     try {
       final service = ref.read(mapboxServiceProvider);
-      // Map transport mode to Mapbox routing profiles
       String mapboxMode = 'driving';
       if (_transportMode == 'walk') mapboxMode = 'walking';
       if (_transportMode == 'bike') mapboxMode = 'cycling';
@@ -137,7 +146,7 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
       final routeInfo = await service.getRoute(_startLocation!, _endLocation!, mode: mapboxMode);
       
       setState(() {
-        _distanceController.text = routeInfo.distanceKm.toString();
+        _distanceController.text = routeInfo.distanceKm.toStringAsFixed(1);
         _isCalculatingRoute = false;
       });
     } catch (e) {
@@ -184,128 +193,141 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
   Widget build(BuildContext context) {
     final activityState = ref.watch(activityControllerProvider);
     final isLoading = activityState is AsyncLoading;
+    final calcAsync = ref.watch(co2CalculatorProvider);
 
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: _transportMode,
-              decoration: const InputDecoration(
-                labelText: 'Transport Mode',
-                border: OutlineInputBorder(),
-              ),
-              items: _modes.map((mode) {
-                return DropdownMenuItem(
-                  value: mode,
-                  child: Text(mode.replaceAll('_', ' ').toUpperCase()),
-                );
-              }).toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() => _transportMode = val);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            // Map Widget
-            Text(
-              'Select Route (Tap Start & End)',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: _defaultCenter,
-                    initialZoom: 12.0,
-                    onTap: _handleMapTap,
+    return calcAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Error loading calculator: $err')),
+      data: (calc) {
+        final dist = double.tryParse(_distanceController.text) ?? 0.0;
+        final currentCo2 = calc.calculateTransport(_transportMode, dist);
+        final impact = calc.getImpactLevel(currentCo2);
+
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: _transportMode,
+                  decoration: InputDecoration(
+                    labelText: 'Transport Mode',
+                    labelStyle: GoogleFonts.inter(),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.example.co2_footprint_tracker',
-                    ),
-                    MarkerLayer(
-                      markers: [
-                        if (_startLocation != null)
-                          Marker(
-                            point: _startLocation!,
-                            width: 40,
-                            height: 40,
-                            child: const Icon(Icons.location_on, color: Colors.green, size: 40),
-                          ),
-                        if (_endLocation != null)
-                          Marker(
-                            point: _endLocation!,
-                            width: 40,
-                            height: 40,
-                            child: const Icon(Icons.location_on, color: Colors.red, size: 40),
-                          ),
+                  items: _modes.map((mode) {
+                    return DropdownMenuItem(
+                      value: mode['value'],
+                      child: Text('${mode['icon']} ${mode['label']}'),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _transportMode = val);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                Text(
+                  'Select Route (Tap Start & End)',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 160,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: _defaultCenter,
+                        initialZoom: 12.0,
+                        onTap: _handleMapTap,
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.example.co2_footprint_tracker',
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            if (_startLocation != null)
+                              Marker(
+                                point: _startLocation!,
+                                width: 30,
+                                height: 30,
+                                child: const Icon(Icons.location_on, color: Colors.green, size: 30),
+                              ),
+                            if (_endLocation != null)
+                              Marker(
+                                point: _endLocation!,
+                                width: 30,
+                                height: 30,
+                                child: const Icon(Icons.location_on, color: Colors.red, size: 30),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            if (_isCalculatingRoute)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Center(
-                  child: LinearProgressIndicator(),
+                if (_isCalculatingRoute)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4.0),
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+                const SizedBox(height: 16),
+                
+                TextFormField(
+                  controller: _distanceController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Distance (km)',
+                    hintText: 'Enter or use map above',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Enter distance';
+                    final d = double.tryParse(value);
+                    if (d == null) return 'Enter valid number';
+                    if (d <= 0 && _transportMode != 'walk' && _transportMode != 'bike') return 'Distance must be > 0';
+                    return null;
+                  },
                 ),
-              ),
-            const SizedBox(height: 16),
-            
-            TextFormField(
-              controller: _distanceController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Distance (km)',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'Enter distance';
-                if (double.tryParse(value) == null) return 'Enter valid number';
-                return null;
-              },
-            ),
-            const Spacer(),
-            ElevatedButton(
-              onPressed: isLoading || _isCalculatingRoute ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+
+                const SizedBox(height: 20),
+                
+                // Impact Preview
+                _ImpactPreview(co2Kg: currentCo2, level: impact),
+
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: isLoading || _isCalculatingRoute ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(
+                          'Log Transport Activity',
+                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
                 ),
-              ),
-              child: isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(
-                      'Log Transport Activity',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -319,14 +341,24 @@ class FoodActivityForm extends ConsumerStatefulWidget {
 
 class _FoodActivityFormState extends ConsumerState<FoodActivityForm> {
   final _formKey = GlobalKey<FormState>();
-  String _foodCategory = 'meat_meal';
+  String _foodCategory = 'meat_beef';
   final _servingsController = TextEditingController(text: '1');
 
-  final List<String> _categories = [
-    'meat_meal',
-    'vegetarian_meal',
-    'vegan_meal',
+  final List<Map<String, String>> _categories = [
+    {'value': 'meat_beef', 'label': 'Beef / Lamb', 'icon': '🥩'},
+    {'value': 'meat_pork', 'label': 'Pork', 'icon': '🥓'},
+    {'value': 'meat_chicken', 'label': 'Poultry', 'icon': '🍗'},
+    {'value': 'fish', 'label': 'Fish', 'icon': '🐟'},
+    {'value': 'dairy', 'label': 'Dairy / Eggs', 'icon': '🥚'},
+    {'value': 'vegetarian', 'label': 'Vegetarian Meal', 'icon': '🥗'},
+    {'value': 'vegan', 'label': 'Vegan Meal', 'icon': '🌱'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _servingsController.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
@@ -362,70 +394,81 @@ class _FoodActivityFormState extends ConsumerState<FoodActivityForm> {
   Widget build(BuildContext context) {
     final activityState = ref.watch(activityControllerProvider);
     final isLoading = activityState is AsyncLoading;
+    final calcAsync = ref.watch(co2CalculatorProvider);
 
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: _foodCategory,
-              decoration: const InputDecoration(
-                labelText: 'Food Category',
-                border: OutlineInputBorder(),
-              ),
-              items: _categories.map((cat) {
-                return DropdownMenuItem(
-                  value: cat,
-                  child: Text(cat.replaceAll('_', ' ').toUpperCase()),
-                );
-              }).toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() => _foodCategory = val);
-                }
-              },
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _servingsController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Servings',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'Enter servings';
-                if (int.tryParse(value) == null) return 'Enter valid integer';
-                return null;
-              },
-            ),
-            const Spacer(),
-            ElevatedButton(
-              onPressed: isLoading ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+    return calcAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Error loading calculator: $err')),
+      data: (calc) {
+        final servings = int.tryParse(_servingsController.text) ?? 0;
+        final currentCo2 = calc.calculateFood(_foodCategory, servings);
+        final impact = calc.getImpactLevel(currentCo2);
+
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: _foodCategory,
+                  decoration: InputDecoration(
+                    labelText: 'Food Category',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: _categories.map((cat) {
+                    return DropdownMenuItem(
+                      value: cat['value'],
+                      child: Text('${cat['icon']} ${cat['label']}'),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _foodCategory = val);
+                    }
+                  },
                 ),
-              ),
-              child: isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(
-                      'Log Food Activity',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _servingsController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Servings',
+                    hintText: 'Number of plates/portions',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Enter servings';
+                    final s = int.tryParse(value);
+                    if (s == null) return 'Enter valid integer';
+                    if (s <= 0) return 'Servings must be > 0';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                _ImpactPreview(co2Kg: currentCo2, level: impact),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: isLoading ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(
+                          'Log Food Activity',
+                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -439,13 +482,21 @@ class EnergyActivityForm extends ConsumerStatefulWidget {
 
 class _EnergyActivityFormState extends ConsumerState<EnergyActivityForm> {
   final _formKey = GlobalKey<FormState>();
-  String _energyType = 'electricity';
+  String _energyType = 'electricity_grid';
   final _kwhController = TextEditingController();
 
-  final List<String> _types = [
-    'electricity',
-    'gas',
+  final List<Map<String, String>> _types = [
+    {'value': 'electricity_grid', 'label': 'Grid Electricity', 'icon': '🔌'},
+    {'value': 'electricity_renewable', 'label': 'Renewable Energy', 'icon': '☀️'},
+    {'value': 'natural_gas', 'label': 'Natural Gas', 'icon': '🔥'},
+    {'value': 'heating_oil', 'label': 'Heating Oil', 'icon': '🛢️'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _kwhController.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
@@ -481,69 +532,150 @@ class _EnergyActivityFormState extends ConsumerState<EnergyActivityForm> {
   Widget build(BuildContext context) {
     final activityState = ref.watch(activityControllerProvider);
     final isLoading = activityState is AsyncLoading;
+    final calcAsync = ref.watch(co2CalculatorProvider);
 
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: _energyType,
-              decoration: const InputDecoration(
-                labelText: 'Energy Type',
-                border: OutlineInputBorder(),
-              ),
-              items: _types.map((type) {
-                return DropdownMenuItem(
-                  value: type,
-                  child: Text(type.toUpperCase()),
-                );
-              }).toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() => _energyType = val);
-                }
-              },
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _kwhController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Usage (kWh)',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'Enter kWh';
-                if (double.tryParse(value) == null) return 'Enter valid number';
-                return null;
-              },
-            ),
-            const Spacer(),
-            ElevatedButton(
-              onPressed: isLoading ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+    return calcAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Error loading calculator: $err')),
+      data: (calc) {
+        final kwh = double.tryParse(_kwhController.text) ?? 0.0;
+        final currentCo2 = calc.calculateEnergy(_energyType, kwh);
+        final impact = calc.getImpactLevel(currentCo2);
+
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: _energyType,
+                  decoration: InputDecoration(
+                    labelText: 'Energy Type',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: _types.map((type) {
+                    return DropdownMenuItem(
+                      value: type['value'],
+                      child: Text('${type['icon']} ${type['label']}'),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _energyType = val);
+                    }
+                  },
                 ),
-              ),
-              child: isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(
-                      'Log Energy Usage',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _kwhController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Usage (kWh)',
+                    hintText: 'Check your utility bill',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Enter kWh';
+                    final k = double.tryParse(value);
+                    if (k == null) return 'Enter valid number';
+                    if (k <= 0) return 'kWh must be > 0';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                _ImpactPreview(co2Kg: currentCo2, level: impact),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: isLoading ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(
+                          'Log Energy Usage',
+                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ImpactPreview extends StatelessWidget {
+  final double co2Kg;
+  final ImpactLevel level;
+
+  const _ImpactPreview({required this.co2Kg, required this.level});
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    String text;
+    IconData icon;
+
+    switch (level) {
+      case ImpactLevel.low:
+        color = Colors.green;
+        text = 'Low Impact';
+        icon = Icons.eco_rounded;
+      case ImpactLevel.medium:
+        color = Colors.orange;
+        text = 'Medium Impact';
+        icon = Icons.info_outline;
+      case ImpactLevel.high:
+        color = Colors.red;
+        text = 'High Impact';
+        icon = Icons.warning_amber_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Estimated Footprint',
+                  style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  '${co2Kg.toStringAsFixed(2)} kg CO₂',
+                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              text,
+              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
   }

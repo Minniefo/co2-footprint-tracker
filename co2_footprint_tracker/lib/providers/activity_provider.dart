@@ -8,9 +8,16 @@ import 'auth_provider.dart';
 import 'emission_factors_provider.dart';
 import 'gamification_provider.dart';
 
+import '../services/co2_calculator.dart';
+
 final activityServiceProvider = Provider<ActivityService>((ref) {
   final firestore = ref.watch(firestoreProvider);
   return ActivityService(firestore);
+});
+
+final co2CalculatorProvider = FutureProvider<Co2Calculator>((ref) async {
+  final factors = await ref.watch(emissionFactorsProvider.future);
+  return Co2Calculator(factors);
 });
 
 final userActivitiesProvider = StreamProvider<List<Activity>>((ref) {
@@ -40,13 +47,11 @@ class ActivityController extends AsyncNotifier<void> {
       final user = ref.read(firebaseAuthProvider).currentUser;
       if (user == null) throw Exception('User not logged in');
 
-      // 1. Get emission factors
-      final factors = await ref.read(emissionFactorsProvider.future);
+      // 1. Get calculator
+      final calculator = await ref.read(co2CalculatorProvider.future);
       
       // 2. Calculate CO2
-      final factor = factors.getTransportFactor(transportMode);
-      final dist = distanceKm ?? 1.0; 
-      final co2Kg = factor * dist;
+      final co2Kg = calculator.calculateTransport(transportMode, distanceKm ?? 1.0);
 
       // 3. Create Activity
       final docId = ref.read(firestoreProvider).collection('activities').doc().id;
@@ -96,14 +101,11 @@ class ActivityController extends AsyncNotifier<void> {
       final user = ref.read(firebaseAuthProvider).currentUser;
       if (user == null) throw Exception('User not logged in');
 
-      // Static calculation for food as example, could be brought from settings too
-      final fallbackFactors = {
-        'meat_meal': 3.2,
-        'vegetarian_meal': 1.1,
-        'vegan_meal': 0.7,
-      };
+      // 1. Get calculator
+      final calculator = await ref.read(co2CalculatorProvider.future);
       
-      final co2Kg = (fallbackFactors[foodCategory] ?? 1.0) * servings;
+      // 2. Calculate CO2
+      final co2Kg = calculator.calculateFood(foodCategory, servings);
 
       final docId = ref.read(firestoreProvider).collection('activities').doc().id;
       final activity = FoodActivity(
@@ -145,13 +147,11 @@ class ActivityController extends AsyncNotifier<void> {
       final user = ref.read(firebaseAuthProvider).currentUser;
       if (user == null) throw Exception('User not logged in');
 
-      // Static calculation for energy
-      final fallbackFactors = {
-        'electricity': 0.5,
-        'gas': 0.2,
-      };
+      // 1. Get calculator
+      final calculator = await ref.read(co2CalculatorProvider.future);
       
-      final co2Kg = (fallbackFactors[energyType] ?? 0.5) * kwh;
+      // 2. Calculate CO2
+      final co2Kg = calculator.calculateEnergy(energyType, kwh);
 
       final docId = ref.read(firestoreProvider).collection('activities').doc().id;
       final activity = EnergyActivity(
