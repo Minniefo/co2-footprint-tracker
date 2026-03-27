@@ -8,6 +8,8 @@ import 'package:latlong2/latlong.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/mapbox_provider.dart';
 import '../../services/co2_calculator.dart';
+import '../food_capture_screen.dart';
+import '../../models/nutrition_model.dart';
 
 class AddActivityScreen extends ConsumerStatefulWidget {
   const AddActivityScreen({super.key});
@@ -439,6 +441,7 @@ class _FoodActivityFormState extends ConsumerState<FoodActivityForm> {
   final _formKey = GlobalKey<FormState>();
   String _foodCategory = 'meat_beef';
   final _servingsController = TextEditingController(text: '1');
+  double? _aiExplicitCo2Kg;
 
   final List<Map<String, String>> _categories = [
     {'value': 'meat_beef', 'label': 'Beef / Lamb', 'icon': '🥩'},
@@ -469,13 +472,17 @@ class _FoodActivityFormState extends ConsumerState<FoodActivityForm> {
       await ref.read(activityControllerProvider.notifier).logFoodActivity(
             foodCategory: _foodCategory,
             servings: int.parse(_servingsController.text),
+            explicitCo2Kg: _aiExplicitCo2Kg,
           );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Food activity logged!')),
         );
-        _servingsController.text = '1';
+        setState(() {
+          _servingsController.text = '1';
+          _aiExplicitCo2Kg = null;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -497,7 +504,9 @@ class _FoodActivityFormState extends ConsumerState<FoodActivityForm> {
       error: (err, stack) => Center(child: Text('Error loading calculator: $err')),
       data: (calc) {
         final servings = int.tryParse(_servingsController.text) ?? 0;
-        final currentCo2 = calc.calculateFood(_foodCategory, servings);
+        final currentCo2 = _aiExplicitCo2Kg != null 
+                             ? (_aiExplicitCo2Kg! * servings)
+                             : calc.calculateFood(_foodCategory, servings);
         final impact = calc.getImpactLevel(currentCo2);
 
         return Padding(
@@ -507,6 +516,31 @@ class _FoodActivityFormState extends ConsumerState<FoodActivityForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final nutrition = await Navigator.push(context, MaterialPageRoute(builder: (_) => const FoodCaptureScreen()));
+                    if (nutrition != null && nutrition is NutritionModel) {
+                       setState(() {
+                         _aiExplicitCo2Kg = nutrition.co2EstimateKg;
+                         if (_categories.any((c) => c['value'] == nutrition.matchedCategory)) {
+                           _foodCategory = nutrition.matchedCategory;
+                         } else {
+                           _foodCategory = 'vegetarian';
+                         }
+                         _servingsController.text = '1';
+                       });
+                    }
+                  },
+                  icon: const Icon(Icons.document_scanner_rounded),
+                  label: Text('Scan Food with AI', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange.shade700,
+                    side: BorderSide(color: Colors.orange.shade300, width: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 DropdownButtonFormField<String>(
                   value: _foodCategory,
                   decoration: InputDecoration(

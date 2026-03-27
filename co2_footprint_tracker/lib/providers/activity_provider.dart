@@ -95,6 +95,7 @@ class ActivityController extends AsyncNotifier<void> {
   Future<void> logFoodActivity({
     required String foodCategory,
     int servings = 1,
+    double? explicitCo2Kg,
   }) async {
     state = const AsyncLoading();
     try {
@@ -105,7 +106,9 @@ class ActivityController extends AsyncNotifier<void> {
       final calculator = await ref.read(co2CalculatorProvider.future);
       
       // 2. Calculate CO2
-      final co2Kg = calculator.calculateFood(foodCategory, servings);
+      final co2Kg = explicitCo2Kg != null 
+          ? (explicitCo2Kg * servings) 
+          : calculator.calculateFood(foodCategory, servings);
 
       final docId = ref.read(firestoreProvider).collection('activities').doc().id;
       final activity = FoodActivity(
