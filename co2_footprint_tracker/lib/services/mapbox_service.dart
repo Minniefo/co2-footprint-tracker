@@ -19,29 +19,31 @@ class MapboxService {
     final collection = _firestore.collection('map_cache');
     
     try {
-      // 1. Check Cache
       final doc = await collection.doc(cacheKey).get();
       if (doc.exists) {
         final data = doc.data()!;
+        final geometry = (data['geometry'] as List?)?.map((p) => LatLng(p['lat'], p['lng'])).toList() ?? [];
+        
         return RouteInfo(
           distanceKm: (data['distance_km'] as num).toDouble(),
           durationS: (data['duration_s'] as num).toInt(),
           startAreaName: data['start_area_name'] as String?,
           endAreaName: data['end_area_name'] as String?,
+          polyline: geometry,
         );
       }
     } catch (e) {
-      // Ignore cache read failures and fallback to API
+      // Fallback
     }
 
-    // 2. Fetch from Mapbox Directions API
+    // Use geometries=geojson to get coordinates directly
     final url = Uri.parse(
-      'https://api.mapbox.com/directions/v5/mapbox/$mode/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?access_token=${MapboxConfig.publicToken}'
+      'https://api.mapbox.com/directions/v5/mapbox/$mode/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?geometries=geojson&access_token=${MapboxConfig.publicToken}'
     );
 
     final response = await http.get(url);
     if (response.statusCode != 200) {
-      throw Exception('Failed to fetch route. Check Mapbox token and network.');
+      throw Exception('Failed to fetch route');
     }
 
     final data = json.decode(response.body);
@@ -50,28 +52,47 @@ class MapboxService {
     }
 
     final route = data['routes'][0];
-    final distanceMeters = (route['distance'] as num).toDouble();
-    final distanceKm = double.parse((distanceMeters / 1000).toStringAsFixed(2));
+    final distanceKm = double.parse(((route['distance'] as num) / 1000).toStringAsFixed(2));
     final durationS = (route['duration'] as num).toInt();
+    
+    // Parse GeoJSON geometry
+    final List<dynamic> coordinates = route['geometry']['coordinates'];
+    final List<LatLng> polyline = coordinates.map((c) => LatLng(c[1].toDouble(), c[0].toDouble())).toList();
 
-    // 3. Save to Cache
     try {
       await collection.doc(cacheKey).set({
         'cache_key': cacheKey,
         'distance_km': distanceKm,
         'duration_s': durationS,
-        'start_area_name': null, // Expandable with reverse-geocoding later
-        'end_area_name': null,
+        'geometry': polyline.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList(),
         'created_at': FieldValue.serverTimestamp(),
-        'fetched_from': 'mapbox',
       });
-    } catch (e) {
-      // Ignore cache write failures
-    }
+    } catch (e) {}
 
     return RouteInfo(
       distanceKm: distanceKm,
       durationS: durationS,
+      polyline: polyline,
     );
+  }
+
+  /// Fetches location suggestions as the user types
+  Future<List<Map<String, dynamic>>> getSuggestions(String query) async {
+    if (query.length < 3) return [];
+    
+    final url = Uri.parse(
+      'https://api.mapbox.com/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json?access_token=${MapboxConfig.publicToken}&autocomplete=true&limit=5'
+    );
+
+    final response = await http.get(url);
+    if (response.statusCode != 200) return [];
+
+    final data = json.decode(response.body);
+    final List features = data['features'] ?? [];
+
+    return features.map((f) => {
+      'text': f['place_name'] as String,
+      'center': f['center'] as List, // [lng, lat]
+    }).toList();
   }
 }

@@ -38,9 +38,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       extendBody: true, // Important for the curved bar to show background properly
-      body: IndexedStack(
-        index: currentIndex,
-        children: _screens,
+      body: Padding(
+        padding: const EdgeInsets.only(bottom: 60),
+        child: IndexedStack(
+          index: currentIndex,
+          children: _screens,
+        ),
       ),
       bottomNavigationBar: CurvedNavigationBar(
         index: currentIndex,
@@ -57,7 +60,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         backgroundColor: Colors.transparent, // Background of the gap
         animationCurve: Curves.easeInOutBack,
         animationDuration: const Duration(milliseconds: 350),
-        onTap: (index) => ref.read(navigationProvider.notifier).state = index,
+        onTap: (index) => ref.read(navigationProvider.notifier).setIndex(index),
         letIndexChange: (index) => true,
       ),
     );
@@ -72,189 +75,153 @@ class HomeDashboard extends ConsumerWidget {
     final userAsync = ref.watch(userDocumentProvider);
     final activitiesAsync = ref.watch(userActivitiesProvider);
     
-    // Calculate Today's footprint
-    double todayFootprint = 0.0;
-    
-    // Grouping by category
-    double transportFootprint = 0.0;
-    double foodFootprint = 0.0;
-    double energyFootprint = 0.0;
-    
-    if (activitiesAsync.hasValue) {
-      final now = DateTime.now();
-      for (var activity in activitiesAsync.value!) {
-        final activityDate = activity.createdAt.toDate();
-        // Check if activity was today
-        if (activityDate.year == now.year && activityDate.month == now.month && activityDate.day == now.day) {
-            todayFootprint += activity.co2Kg;
-            
-            if (activity.activityType == 'transport') transportFootprint += activity.co2Kg;
-            if (activity.activityType == 'food') foodFootprint += activity.co2Kg;
-            if (activity.activityType == 'energy') energyFootprint += activity.co2Kg;
-        }
-      }
-    }
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Lighter background for better contrast
+      backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
         child: userAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => Center(child: Text('Error: $err')),
-          data: (userModel) {
-            // Use Firestore display_name first (real-time), fall back to Firebase Auth
-            final firebaseUser = FirebaseAuth.instance.currentUser;
-            final displayName = (userModel?.displayName?.isNotEmpty == true)
-                ? userModel!.displayName!
-                : ((firebaseUser?.email?.isNotEmpty == true) ? firebaseUser!.email!.split('@')[0] : 'Eco Warrior');
-            final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+          error: (err, stack) => Center(child: Text('User Error: $err')),
+          data: (userModel) => activitiesAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, stack) => Center(child: Text('Activity Error: $err')),
+            data: (activities) {
+              // Calculate Today's footprint
+              double todayFootprint = 0.0;
+              double transportFootprint = 0.0;
+              double foodFootprint = 0.0;
+              double energyFootprint = 0.0;
+              
+              final now = DateTime.now();
+              for (var activity in activities) {
+                final activityDate = activity.createdAt.toDate();
+                if (activityDate.year == now.year && 
+                    activityDate.month == now.month && 
+                    activityDate.day == now.day) {
+                  todayFootprint += activity.co2Kg;
+                  
+                  if (activity.activityType == 'transport') {
+                    transportFootprint += activity.co2Kg;
+                  } else if (activity.activityType == 'food') {
+                    foodFootprint += activity.co2Kg;
+                  } else if (activity.activityType == 'energy') {
+                    energyFootprint += activity.co2Kg;
+                  }
+                }
+              }
 
-            final points = userModel?.points ?? 0;
-            final streak = userModel?.streak ?? 0;
+              final firebaseUser = FirebaseAuth.instance.currentUser;
+              final displayName = (userModel?.displayName?.isNotEmpty == true)
+                  ? userModel!.displayName!
+                  : ((firebaseUser?.email?.isNotEmpty == true) ? firebaseUser!.email!.split('@')[0] : 'Eco Warrior');
+              final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
 
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-              // 1. Top Header Section (Scrolling)
-              Container(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                ),
+              final points = userModel?.points ?? 0;
+              final streak = userModel?.streak ?? 0;
+
+              return SingleChildScrollView(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    // 1. Header
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                      color: Colors.white,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Hello,',
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade600,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Hello,', style: GoogleFonts.inter(fontSize: 16, color: Colors.grey.shade600)),
+                                    Text(
+                                      displayName,
+                                      style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ),
-                              Text(
-                                displayName,
-                                style: GoogleFonts.inter(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                              PopupMenuButton<String>(
+                                onSelected: (val) async {
+                                  if (val == 'logout') {
+                                    await ref.read(authControllerProvider.notifier).logout();
+                                    if (context.mounted) {
+                                      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginScreen()), (r) => false);
+                                    }
+                                  }
+                                },
+                                itemBuilder: (ctx) => [
+                                  PopupMenuItem(
+                                    value: 'logout', 
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.logout, color: Colors.red, size: 20),
+                                        const SizedBox(width: 8),
+                                        Text('Logout', style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w600)),
+                                      ],
+                                    )
+                                  ),
+                                ],
+                                child: CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: Colors.green.shade100,
+                                  backgroundImage: userModel?.photoUrl != null ? NetworkImage(userModel!.photoUrl!) : null,
+                                  child: userModel?.photoUrl == null 
+                                      ? Text(initial, style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.green.shade800)) 
+                                      : null,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
-                        ),
-                        PopupMenuButton<String>(
-                          onSelected: (value) async {
-                            if (value == 'logout') {
-                              await ref.read(authControllerProvider.notifier).logout();
-                              if (context.mounted) {
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                                  (route) => false,
-                                );
-                              }
-                            }
-                          },
-                          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                            PopupMenuItem<String>(
-                              value: 'logout',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.logout, color: Colors.red),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Logout',
-                                    style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
+                          const SizedBox(height: 20),
+                          GestureDetector(
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GamificationScreen())),
+                            child: Row(
+                              children: [
+                                Expanded(child: _buildHeaderMetricCard(
+                                  icon: Icons.local_fire_department,
+                                  color: Colors.orange,
+                                  value: streak.toString(),
+                                  label: 'Day Streak',
+                                )),
+                                const SizedBox(width: 15),
+                                Expanded(child: _buildHeaderMetricCard(
+                                  icon: Icons.star_rounded,
+                                  color: Colors.amber,
+                                  value: points.toString(),
+                                  label: 'Points',
+                                )),
+                              ],
                             ),
-                          ],
-                          child: CircleAvatar(
-                            radius: 24,
-                            backgroundColor: Colors.green.shade100,
-                            backgroundImage: userModel?.photoUrl != null
-                                ? NetworkImage(userModel!.photoUrl!)
-                                : null,
-                            child: userModel?.photoUrl == null
-                                ? Text(
-                                    initial,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green.shade800,
-                                    ),
-                                  )
-                                : null,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  const SizedBox(height: 20),
-                  // Prominent Metrics Row
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const GamificationScreen()),
-                      );
-                    },
-                    child: Row(
-                      children: [
-                        Expanded(child: _buildHeaderMetricCard(
-                          icon: Icons.local_fire_department,
-                          color: Colors.orange,
-                          value: streak.toString(),
-                          label: 'Day Streak',
-                        )),
-                        const SizedBox(width: 15),
-                        Expanded(child: _buildHeaderMetricCard(
-                          icon: Icons.star_rounded,
-                          color: Colors.amber,
-                          value: points.toString(),
-                          label: 'Points',
-                        )),
-                      ],
+                    // 2. Body
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          _buildMainFootprintCard(todayFootprint),
+                          const SizedBox(height: 24),
+                          _buildCategoryBreakdown(todayFootprint, transportFootprint, foodFootprint, energyFootprint),
+                          const SizedBox(height: 24),
+                          _buildQuickTips(),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-  
-            // 2. Main Content Area
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Main Footprint Card
-                  _buildMainFootprintCard(todayFootprint),
-                  const SizedBox(height: 24),
-  
-                  // Category Breakdown & Chart
-                  _buildCategoryBreakdown(todayFootprint, transportFootprint, foodFootprint, energyFootprint),
-                  const SizedBox(height: 24),
-  
-                  // Quick Tips
-                  _buildQuickTips(),
-                  const SizedBox(height: 30), // Padding for bottom nav
-                ],
-              ),
-            ),
-          ],
+                  ],
+                ),
+              );
+            },
+          ),
         ),
-      );
-     }),
-    ));
+      ),
+    );
   }
 
   // --- UI Components ---
