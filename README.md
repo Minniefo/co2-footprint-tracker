@@ -69,7 +69,9 @@ With growing awareness of climate change, individuals play a crucial role in red
 | **Authentication** | Firebase Auth (Email + Google) |
 | **File Storage** | Firebase Storage |
 | **Maps & Routes** | Mapbox (`flutter_map`) |
-| **AI / ML** | External AI APIs via `http` |
+| **AI Recommendations** | Google Gemini API |
+| **Food Recognition** | Google Gemini Vision API |
+| **Nutrition Data** | USDA FoodData Central API |
 | **Fonts** | Google Fonts (`inter`, `roboto_mono`) |
 | **Navigation** | `curved_navigation_bar` |
 | **Image Handling** | `image_picker` |
@@ -142,9 +144,13 @@ cd co2-footprint-tracker/co2_footprint_tracker
 # Install dependencies
 flutter pub get
 
-# Add your secrets → create a .env file
-cp .env.example .env
-# Fill in: MAPBOX_TOKEN, AI_API_KEY, etc.
+# Add your secrets — create a .env file in the project root
+touch .env
+
+# Required .env variables:
+# MAPBOX_ACCESS_TOKEN=pk.ey...        (from mapbox.com)
+# GEMINI_API_KEY=AIza...              (from aistudio.google.com)
+# USDA_API_KEY=...                    (from fdc.nal.usda.gov/api-key)
 
 # Run the app
 flutter run
