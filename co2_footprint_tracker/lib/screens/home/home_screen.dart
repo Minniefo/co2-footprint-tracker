@@ -445,6 +445,7 @@ class HomeDashboard extends ConsumerWidget {
 
   Widget _buildAiInsights(WidgetRef ref) {
     final aiState = ref.watch(aiRecommendationProvider);
+    final selectedTab = ref.watch(aiRecommendationTabProvider);
 
     return Container(
       width: double.infinity,
@@ -465,7 +466,7 @@ class HomeDashboard extends ConsumerWidget {
                   const Icon(Icons.auto_awesome, color: Colors.blue),
                   const SizedBox(width: 8),
                   Text(
-                    'AI Weekly Coach',
+                    'AI Sustainability Coach',
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -483,6 +484,59 @@ class HomeDashboard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => ref.read(aiRecommendationTabProvider.notifier).setTab('daily'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: selectedTab == 'daily' ? Colors.blue : Colors.transparent,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Daily',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            color: selectedTab == 'daily' ? Colors.white : Colors.blue.shade700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => ref.read(aiRecommendationTabProvider.notifier).setTab('weekly'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: selectedTab == 'weekly' ? Colors.blue : Colors.transparent,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Weekly',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            color: selectedTab == 'weekly' ? Colors.white : Colors.blue.shade700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           aiState.when(
             loading: () => const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
@@ -524,7 +578,7 @@ class HomeDashboard extends ConsumerWidget {
                       const SizedBox(height: 16),
                     ],
                     if (goal.isNotEmpty) ...[
-                      Text('Weekly Goal:', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                      Text('${selectedTab == 'weekly' ? 'Weekly' : 'Daily'} Goal:', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.all(12),

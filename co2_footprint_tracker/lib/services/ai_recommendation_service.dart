@@ -97,7 +97,7 @@ Return EXACTLY in this JSON format:
 {
   "summary": "1 short sentence identifying top emission sources",
   "actions": ["1st personalized action", "2nd personalized action", "3rd personalized action"],
-  "goal": "1 realistic weekly goal"
+  "goal": "1 realistic ${type} goal"
 }
     '''.trim();
 
