@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/navigation_provider.dart';
+import '../../providers/ai_recommendation_provider.dart';
 import '../activity/add_activity_screen.dart';
 import '../auth/login_screen.dart';
 import '../gamification/gamification_screen.dart';
@@ -210,7 +212,7 @@ class HomeDashboard extends ConsumerWidget {
                           const SizedBox(height: 24),
                           _buildCategoryBreakdown(todayFootprint, transportFootprint, foodFootprint, energyFootprint),
                           const SizedBox(height: 24),
-                          _buildQuickTips(),
+                          _buildAiInsights(ref),
                         ],
                       ),
                     ),
@@ -441,8 +443,11 @@ class HomeDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickTips() {
+  Widget _buildAiInsights(WidgetRef ref) {
+    final aiState = ref.watch(aiRecommendationProvider);
+
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.blue.withValues(alpha: 0.05),
@@ -453,27 +458,97 @@ class HomeDashboard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.lightbulb_outline, color: Colors.blue),
-              const SizedBox(width: 8),
-              Text(
-                'AI Suggestion',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade800,
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Text(
+                    'AI Weekly Coach',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade800,
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.blue),
+                onPressed: () {
+                  ref.read(aiRecommendationProvider.notifier).refreshRecommendation();
+                },
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            'Try using public transport instead of driving for your next commute. You could save up to 2.4 kg of CO₂!',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: Colors.blue.shade900,
-              height: 1.5,
+          aiState.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator()),
             ),
+            error: (err, stack) => Text('Failed to load insights: $err', style: const TextStyle(color: Colors.red)),
+            data: (recommendation) {
+              if (recommendation == null) {
+                return Text(
+                  'Tap the refresh button to get your personalized AI coaching recommendation based on your habits!',
+                  style: GoogleFonts.inter(fontSize: 14, color: Colors.blue.shade900, height: 1.5),
+                );
+              }
+              
+              final rawText = recommendation.recommendation;
+              try {
+                final Map<String, dynamic> data = jsonDecode(rawText);
+                final summary = data['summary']?.toString() ?? '';
+                final actions = (data['actions'] as List?)?.map((e) => e.toString()).toList() ?? [];
+                final goal = data['goal']?.toString() ?? '';
+                
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (summary.isNotEmpty) ...[
+                      Text(summary, style: GoogleFonts.inter(fontSize: 14, color: Colors.blue.shade900, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 16),
+                    ],
+                    if (actions.isNotEmpty) ...[
+                      Text('Action Plan:', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                      const SizedBox(height: 8),
+                      ...actions.map((act) => Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('• ', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                          Expanded(child: Text(act, style: GoogleFonts.inter(fontSize: 14, color: Colors.blue.shade900, height: 1.4))),
+                        ],
+                      )).toList(),
+                      const SizedBox(height: 16),
+                    ],
+                    if (goal.isNotEmpty) ...[
+                      Text('Weekly Goal:', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.shade200)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.flag_rounded, color: Colors.blue, size: 24),
+                            const SizedBox(width: 12),
+                            Expanded(child: Text(goal, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.blue.shade900, height: 1.3))),
+                          ],
+                        ),
+                      )
+                    ],
+                  ],
+                );
+              } catch (e) {
+                // Formatting fallback for old string formats
+                final cleanText = rawText.replaceAll('**', '').replaceAll('*', '•');
+                return Text(
+                  cleanText,
+                  style: GoogleFonts.inter(fontSize: 14, color: Colors.blue.shade900, height: 1.5),
+                );
+              }
+            },
           ),
         ],
       ),
