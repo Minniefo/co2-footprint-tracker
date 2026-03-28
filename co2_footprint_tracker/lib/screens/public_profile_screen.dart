@@ -125,7 +125,7 @@ class PublicProfileScreen extends ConsumerWidget {
                         const SizedBox(width: 10),
                         Expanded(child: _StatCard(icon: Icons.star_rounded, color: const Color(0xFFFF8F00), label: 'Points', value: '${user.points ?? 0}')),
                         const SizedBox(width: 10),
-                        Expanded(child: _StatCard(icon: Icons.local_fire_department_rounded, color: const Color(0xFFE53935), label: 'Streak', value: '${user.streak ?? 0}d')),
+                        Expanded(child: _StatCard(icon: Icons.local_fire_department_rounded, color: const Color(0xFFE53935), label: 'Streak', value: '${user.activeStreak ?? 0}d')),
                       ],
                     ),
                   ),
@@ -175,6 +175,33 @@ class PublicProfileScreen extends ConsumerWidget {
                       ),
                     ),
                   ],
+                ],
+
+                // ── Eco Lifestyle ──────────────────────────────────────────
+                if (showContent && (user.country != null || user.homeType != null || user.dietType != null || user.householdSize != null || user.preferredTransport != null)) ...[
+                  const SizedBox(height: 12),
+                  _SectionLabel(label: 'Eco Lifestyle'),
+                  _pad(
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: _kCardShadow),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (user.country != null && user.country!.isNotEmpty)
+                            _InfoRow(icon: Icons.public_rounded, title: 'Location', value: user.country!),
+                          if (user.homeType != null && user.homeType!.isNotEmpty)
+                            _InfoRow(icon: Icons.home_rounded, title: 'Home', value: _fmt(user.homeType)),
+                          if (user.dietType != null && user.dietType!.isNotEmpty)
+                            _InfoRow(icon: Icons.restaurant_menu_rounded, title: 'Diet', value: _fmt(user.dietType)),
+                          if (user.householdSize != null)
+                            _InfoRow(icon: Icons.people_rounded, title: 'Household', value: '${user.householdSize} ${user.householdSize == 1 ? 'person' : 'people'}'),
+                          if (user.preferredTransport != null && user.preferredTransport!.isNotEmpty)
+                            _InfoRow(icon: Icons.directions_car_rounded, title: 'Transport', value: _fmt(user.preferredTransport)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
 
                 const SizedBox(height: 12),
@@ -335,4 +362,39 @@ class _EmptyState extends StatelessWidget {
           ],
         ),
       );
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  const _InfoRow({required this.icon, required this.title, required this.value});
+  
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: const Color(0xFF2E7D32).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: const Color(0xFF2E7D32), size: 18),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black87))),
+          Text(value, style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade600)),
+        ],
+      ),
+    );
+  }
+}
+
+String _fmt(String? val) {
+  if (val == null || val.isEmpty) return '';
+  if (val == 'mixed') return 'Mixed';
+  if (val == 'public_transport') return 'Public Transport';
+  if (val == 'electric_vehicle') return 'Electric Vehicle';
+  if (val == 'condo') return 'Condo';
+  return val[0].toUpperCase() + val.substring(1);
 }

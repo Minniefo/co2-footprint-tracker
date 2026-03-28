@@ -9,6 +9,7 @@ import '../screens/auth/login_screen.dart';
 import '../screens/community/my_posts_screen.dart';
 import '../screens/gamification/gamification_screen.dart';
 import 'edit_profile_screen.dart';
+import 'rewards/rewards_screen.dart';
 
 const _kGreen = Color(0xFF2E7D32);
 const _kBg = Color(0xFFF8FAFC);
@@ -97,7 +98,7 @@ class ProfileScreen extends ConsumerWidget {
                       const SizedBox(width: 10),
                       Expanded(child: _StatCard(icon: Icons.star_rounded, color: const Color(0xFFFF8F00), label: 'Points', value: '${user?.points ?? 0}')),
                       const SizedBox(width: 10),
-                      Expanded(child: _StatCard(icon: Icons.local_fire_department_rounded, color: const Color(0xFFE53935), label: 'Streak', value: '${user?.streak ?? 0}d')),
+                      Expanded(child: _StatCard(icon: Icons.local_fire_department_rounded, color: const Color(0xFFE53935), label: 'Streak', value: '${user?.activeStreak ?? 0}d')),
                     ],
                   ),
                 ),
@@ -112,6 +113,8 @@ class ProfileScreen extends ConsumerWidget {
                         _NavTile(icon: Icons.military_tech_rounded, color: const Color(0xFFFF8F00), label: 'My Badges', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GamificationScreen()))),
                         _divider(),
                         _NavTile(icon: Icons.article_rounded, color: _kGreen, label: 'My Posts', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPostsScreen()))),
+                        _divider(),
+                        _NavTile(icon: Icons.wallet_giftcard_rounded, color: Colors.purple.shade600, label: 'Rewards & Vouchers', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RewardsScreen()))),
                       ],
                     ),
                   ),

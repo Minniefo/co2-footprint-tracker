@@ -54,6 +54,19 @@ class ProfileController extends AsyncNotifier<void> {
     }
   }
 
+  Future<void> updateAdditionalDetails(Map<String, dynamic> data) async {
+    state = const AsyncLoading();
+    try {
+      final uid = ref.read(firebaseAuthProvider).currentUser?.uid;
+      if (uid == null) throw Exception('Not logged in');
+      await ref.read(userServiceProvider).updateAdditionalDetails(uid, data);
+      state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
   Future<String> uploadAvatar(File imageFile) async {
     state = const AsyncLoading();
     try {

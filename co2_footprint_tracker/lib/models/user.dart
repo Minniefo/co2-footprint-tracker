@@ -106,6 +106,35 @@ class UserModel {
       privacy: privacy ?? this.privacy,
     );
   }
+
+  int get activeStreak {
+    if (streak == null || streak == 0 || lastActiveAt == null) return 0;
+    
+    final now = DateTime.now().toUtc();
+    final todayUtc = DateTime.utc(now.year, now.month, now.day);
+    final yesterdayUtc = todayUtc.subtract(const Duration(days: 1));
+    
+    final lastActiveDate = lastActiveAt!.toDate().toUtc();
+    final lastActiveDayUtc = DateTime.utc(lastActiveDate.year, lastActiveDate.month, lastActiveDate.day);
+
+    if (lastActiveDayUtc.isAtSameMomentAs(todayUtc) || lastActiveDayUtc.isAtSameMomentAs(yesterdayUtc)) {
+      return streak!;
+    }
+    return 0;
+  }
+
+  bool get isStreakAtRisk {
+    if (activeStreak == 0 || lastActiveAt == null) return false;
+    
+    final now = DateTime.now().toUtc();
+    final todayUtc = DateTime.utc(now.year, now.month, now.day);
+    final yesterdayUtc = todayUtc.subtract(const Duration(days: 1));
+    
+    final lastActiveDate = lastActiveAt!.toDate().toUtc();
+    final lastActiveDayUtc = DateTime.utc(lastActiveDate.year, lastActiveDate.month, lastActiveDate.day);
+    
+    return lastActiveDayUtc.isAtSameMomentAs(yesterdayUtc);
+  }
 }
 
 class PrivacySettings {

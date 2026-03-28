@@ -19,6 +19,12 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _nameController;
+  late TextEditingController _countryController;
+  String? _homeType;
+  String? _dietType;
+  int? _householdSize;
+  String? _preferredTransport;
+
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
   bool _isUploadingAvatar = false;
@@ -30,11 +36,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.user?.displayName ?? '');
+    _countryController = TextEditingController(text: widget.user?.country ?? '');
+    _homeType = widget.user?.homeType;
+    _dietType = widget.user?.dietType;
+    _householdSize = widget.user?.householdSize;
+    _preferredTransport = widget.user?.preferredTransport;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _countryController.dispose();
     super.dispose();
   }
 
@@ -78,6 +90,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() => _isSaving = true);
     try {
       await ref.read(profileControllerProvider.notifier).updateDisplayName(_nameController.text.trim());
+      await ref.read(profileControllerProvider.notifier).updateAdditionalDetails({
+        'country': _countryController.text.trim().isEmpty ? null : _countryController.text.trim(),
+        'home_type': _homeType,
+        'diet_type': _dietType,
+        'household_size': _householdSize,
+        'preferred_transport': _preferredTransport,
+      });
+
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -210,23 +230,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
               const SizedBox(height: 28),
 
-              // ── Name field ───────────────────────────────────────────────
-              _FieldCard(
-                label: 'Display Name',
-                hint: 'Enter your display name',
-                icon: Icons.person_rounded,
-                controller: _nameController,
-                onChanged: (_) => setState(() {}),
-                maxChars: _maxChars,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Name cannot be empty';
-                  if (v.trim().length < 2) return 'Name must be at least 2 characters';
-                  if (v.trim().length > _maxChars) return 'Name cannot exceed $_maxChars characters';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
               // ── Email (read-only) ────────────────────────────────────────
               Container(
                 padding: const EdgeInsets.all(16),
@@ -261,6 +264,106 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 12),
+
+              // ── Name field ───────────────────────────────────────────────
+              _FieldCard(
+                label: 'Display Name',
+                hint: 'Enter your display name',
+                icon: Icons.person_rounded,
+                controller: _nameController,
+                onChanged: (_) => setState(() {}),
+                maxChars: _maxChars,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Name cannot be empty';
+                  if (v.trim().length < 2) return 'Name must be at least 2 characters';
+                  if (v.trim().length > _maxChars) return 'Name cannot exceed $_maxChars characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+
+              
+
+              // ── Country field ───────────────────────────────────────────────
+              _FieldCard(
+                label: 'Country',
+                hint: 'Where do you live?',
+                icon: Icons.public_rounded,
+                controller: _countryController,
+                maxChars: 40,
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+
+              // ── Eco Details Dropdowns ────────────────────────────────────────
+              _DropdownCard(
+                label: 'Diet Type',
+                hint: 'Select diet',
+                icon: Icons.restaurant_menu_rounded,
+                value: _dietType,
+                items: const {
+                  'vegan': 'Vegan',
+                  'vegetarian': 'Vegetarian',
+                  'pescatarian': 'Pescatarian',
+                  'mixed': 'Mixed',
+                },
+                onChanged: (val) => setState(() => _dietType = val),
+              ),
+              const SizedBox(height: 12),
+
+              _DropdownCard(
+                label: 'Home Type',
+                hint: 'Select home type',
+                icon: Icons.home_rounded,
+                value: _homeType,
+                items: const {
+                  'apartment': 'Apartment',
+                  'house': 'House',
+                  'condo': 'Condo',
+                  'other': 'Other',
+                },
+                onChanged: (val) => setState(() => _homeType = val),
+              ),
+              const SizedBox(height: 12),
+
+              _DropdownCard(
+                label: 'Household Size',
+                hint: 'Number of people',
+                icon: Icons.people_rounded,
+                value: _householdSize == 6 ? '6+' : _householdSize?.toString(),
+                items: const {
+                  '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6+': '6+',
+                },
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      if (val == '6+') _householdSize = 6;
+                      else _householdSize = int.tryParse(val);
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+
+              _DropdownCard(
+                label: 'Preferred Transport',
+                hint: 'Main way to get around',
+                icon: Icons.directions_car_rounded,
+                value: _preferredTransport,
+                items: const {
+                  'car': 'Car',
+                  'public_transport': 'Public Transport',
+                  'bicycle': 'Bicycle',
+                  'walking': 'Walking',
+                  'electric_vehicle': 'Electric Vehicle',
+                },
+                onChanged: (val) => setState(() => _preferredTransport = val),
+              ),
+              const SizedBox(height: 12),
+
+              
             ],
           ),
         ),
@@ -325,6 +428,72 @@ class _FieldCard extends StatelessWidget {
               border: InputBorder.none,
               errorStyle: GoogleFonts.inter(fontSize: 12),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DropdownCard extends StatelessWidget {
+  final String label;
+  final String hint;
+  final IconData icon;
+  final String? value;
+  final Map<String, String> items;
+  final ValueChanged<String?> onChanged;
+
+  const _DropdownCard({
+    required this.label,
+    required this.hint,
+    required this.icon,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 10, offset: Offset(0, 3))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(10)),
+                child: Icon(icon, color: const Color(0xFF2E7D32), size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.black87)),
+                )
+              ),
+            ],
+          ),
+          DropdownButtonFormField<String>(
+            value: value,
+            onChanged: onChanged,
+            icon: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey.shade600),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: hint,
+              hintStyle: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13),
+              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+            ),
+            dropdownColor: Colors.white,
+            style: GoogleFonts.inter(fontSize: 15, color: Colors.black87),
+            items: items.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
           ),
         ],
       ),
