@@ -115,7 +115,7 @@ class HomeDashboard extends ConsumerWidget {
               final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
 
               final points = userModel?.points ?? 0;
-              final streak = userModel?.streak ?? 0;
+              final streak = userModel?.activeStreak ?? 0;
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 80), // To ensure content doesn't get lost under the 50px curved nav bar
@@ -222,6 +222,33 @@ class HomeDashboard extends ConsumerWidget {
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
+                          if (userModel?.isStreakAtRisk == true) ...[
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              margin: const EdgeInsets.only(bottom: 24),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.orange.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 28),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Streak at risk!', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.orange.shade900, fontSize: 16)),
+                                        const SizedBox(height: 4),
+                                        Text('Log an activity today to save your ${userModel!.activeStreak} day streak!', style: GoogleFonts.inter(color: Colors.orange.shade900, fontSize: 13, height: 1.4)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           _buildMainFootprintCard(todayFootprint),
                           const SizedBox(height: 24),
                           _buildCategoryBreakdown(todayFootprint, transportFootprint, foodFootprint, energyFootprint),

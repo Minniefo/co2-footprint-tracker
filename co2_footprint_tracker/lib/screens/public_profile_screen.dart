@@ -125,7 +125,7 @@ class PublicProfileScreen extends ConsumerWidget {
                         const SizedBox(width: 10),
                         Expanded(child: _StatCard(icon: Icons.star_rounded, color: const Color(0xFFFF8F00), label: 'Points', value: '${user.points ?? 0}')),
                         const SizedBox(width: 10),
-                        Expanded(child: _StatCard(icon: Icons.local_fire_department_rounded, color: const Color(0xFFE53935), label: 'Streak', value: '${user.streak ?? 0}d')),
+                        Expanded(child: _StatCard(icon: Icons.local_fire_department_rounded, color: const Color(0xFFE53935), label: 'Streak', value: '${user.activeStreak ?? 0}d')),
                       ],
                     ),
                   ),

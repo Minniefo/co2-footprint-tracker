@@ -73,7 +73,7 @@ class GamificationScreen extends ConsumerWidget {
         error: (err, stack) => const Text('Error loading stats', style: TextStyle(color: Colors.white)),
         data: (userModel) {
           final points = userModel?.points ?? 0;
-          final streak = userModel?.streak ?? 0;
+          final streak = userModel?.activeStreak ?? 0;
 
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
