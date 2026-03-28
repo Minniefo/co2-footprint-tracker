@@ -276,6 +276,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 )
               : null,
         ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return "$hintText is required";
+          }
+          return null;
+        },
       ),
     );
   }
