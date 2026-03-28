@@ -74,7 +74,21 @@ class RewardsScreen extends ConsumerWidget {
               itemCount: vouchers.length,
               itemBuilder: (context, index) {
                 final voucher = vouchers[index];
-                return _VoucherCard(voucher: voucher, isProcessing: actionState.isLoading);
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: Duration(milliseconds: 400 + (index * 150)),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset(0, 30 * (1 - value)),
+                      child: Opacity(
+                        opacity: value.clamp(0.0, 1.0),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _VoucherCard(voucher: voucher, isProcessing: actionState.isLoading),
+                );
               },
             ),
           );
@@ -92,103 +106,173 @@ class _VoucherCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: _kCardShadow,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: isProcessing ? null : () => _showVoucherDetails(context, ref, voucher),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    shape: BoxShape.circle,
+                    color: Colors.orange.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.star_rounded, color: Colors.orange, size: 28),
+                  child: const Icon(Icons.star_rounded, color: Colors.orange, size: 24),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         voucher.title,
-                        style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${voucher.pointsRequired} Points',
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.green.shade700),
+                        voucher.description,
+                        style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600, height: 1.4),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${voucher.pointsRequired} Pts',
+                              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.green.shade700),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade600,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: isProcessing
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : Text('Redeem', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+                          )
+                        ],
+                      )
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              voucher.description,
-              style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade600, height: 1.4),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isProcessing ? null : () => _confirmRedeem(context, ref, voucher),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade600,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                child: isProcessing 
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text(
-                        'Redeem Voucher',
-                        style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  void _confirmRedeem(BuildContext context, WidgetRef ref, Voucher voucher) {
-    showDialog(
+  void _showVoucherDetails(BuildContext context, WidgetRef ref, Voucher voucher) {
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Redeem Voucher?', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        content: Text(
-          'This will deduct ${voucher.pointsRequired} points from your balance.',
-          style: GoogleFonts.inter(color: Colors.black87),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey.shade600)),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+              ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.orange.withOpacity(0.12), shape: BoxShape.circle),
+                child: const Icon(Icons.star_rounded, color: Colors.orange, size: 40),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                voucher.title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                voucher.description,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(fontSize: 15, color: Colors.grey.shade700, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.eco_rounded, color: Colors.green),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Requires ${voucher.pointsRequired} Points',
+                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.green.shade800),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    ref.read(voucherActionProvider.notifier).redeem(voucher);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Confirm Redemption',
+                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('Cancel', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx); // close dialog
-              ref.read(voucherActionProvider.notifier).redeem(voucher);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: Text('Confirm', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
-          ),
-        ],
+        ),
       ),
     );
   }
