@@ -49,6 +49,10 @@ class UserService {
     });
   }
 
+  Future<void> updateAdditionalDetails(String userId, Map<String, dynamic> data) async {
+    await _firestore.collection('users').doc(userId).update(data);
+  }
+
   /// Uploads [imageFile] to Firebase Storage and saves the URL everywhere it's needed.
   Future<String> uploadAvatar(String userId, File imageFile) async {
     final storageRef = _storage.ref().child('users/$userId/avatar.jpg');
