@@ -151,7 +151,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 80),
               ],
             ),
           );

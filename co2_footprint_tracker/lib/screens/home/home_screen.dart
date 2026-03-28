@@ -40,16 +40,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       extendBody: true, // Important for the curved bar to show background properly
-      body: Padding(
-        padding: const EdgeInsets.only(bottom: 60),
-        child: IndexedStack(
-          index: currentIndex,
-          children: _screens,
-        ),
+      body: IndexedStack(
+        index: currentIndex,
+        children: _screens,
       ),
       bottomNavigationBar: CurvedNavigationBar(
         index: currentIndex,
-        height: 55,
+        height: 50,
         items: const [
           Icon(Icons.home_rounded, size: 30, color: Colors.white),
           Icon(Icons.add_rounded, size: 30, color: Colors.white),
@@ -121,6 +118,7 @@ class HomeDashboard extends ConsumerWidget {
               final streak = userModel?.streak ?? 0;
 
               return SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 80), // To ensure content doesn't get lost under the 50px curved nav bar
                 child: Column(
                   children: [
                     // 1. Header
@@ -147,58 +145,74 @@ class HomeDashboard extends ConsumerWidget {
                                   ],
                                 ),
                               ),
-                              PopupMenuButton<String>(
-                                onSelected: (val) async {
-                                  if (val == 'logout') {
-                                    await ref.read(authControllerProvider.notifier).logout();
-                                    if (context.mounted) {
-                                      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginScreen()), (r) => false);
-                                    }
-                                  }
-                                },
-                                itemBuilder: (ctx) => [
-                                  PopupMenuItem(
-                                    value: 'logout', 
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GamificationScreen())),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.logout, color: Colors.red, size: 20),
+                                        // Streak Chip
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.local_fire_department, color: Colors.orange, size: 16),
+                                              const SizedBox(width: 4),
+                                              Text(streak.toString(), style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
+                                            ],
+                                          ),
+                                        ),
                                         const SizedBox(width: 8),
-                                        Text('Logout', style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w600)),
+                                        // Points Chip
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                                              const SizedBox(width: 4),
+                                              Text(points.toString(), style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.amber.shade800)),
+                                            ],
+                                          ),
+                                        ),
                                       ],
-                                    )
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  PopupMenuButton<String>(
+                                    onSelected: (val) async {
+                                      if (val == 'logout') {
+                                        await ref.read(authControllerProvider.notifier).logout();
+                                        if (context.mounted) {
+                                          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginScreen()), (r) => false);
+                                        }
+                                      }
+                                    },
+                                    itemBuilder: (ctx) => [
+                                      PopupMenuItem(
+                                        value: 'logout', 
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.logout, color: Colors.red, size: 20),
+                                            const SizedBox(width: 8),
+                                            Text('Logout', style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w600)),
+                                          ],
+                                        )
+                                      ),
+                                    ],
+                                    child: CircleAvatar(
+                                      radius: 20, 
+                                      backgroundColor: Colors.green.shade100,
+                                      backgroundImage: userModel?.photoUrl != null ? NetworkImage(userModel!.photoUrl!) : null,
+                                      child: userModel?.photoUrl == null 
+                                          ? Text(initial, style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.green.shade800)) 
+                                          : null,
+                                    ),
                                   ),
                                 ],
-                                child: CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor: Colors.green.shade100,
-                                  backgroundImage: userModel?.photoUrl != null ? NetworkImage(userModel!.photoUrl!) : null,
-                                  child: userModel?.photoUrl == null 
-                                      ? Text(initial, style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.green.shade800)) 
-                                      : null,
-                                ),
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 20),
-                          GestureDetector(
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GamificationScreen())),
-                            child: Row(
-                              children: [
-                                Expanded(child: _buildHeaderMetricCard(
-                                  icon: Icons.local_fire_department,
-                                  color: Colors.orange,
-                                  value: streak.toString(),
-                                  label: 'Day Streak',
-                                )),
-                                const SizedBox(width: 15),
-                                Expanded(child: _buildHeaderMetricCard(
-                                  icon: Icons.star_rounded,
-                                  color: Colors.amber,
-                                  value: points.toString(),
-                                  label: 'Points',
-                                )),
-                              ],
-                            ),
                           ),
                         ],
                       ),
@@ -227,50 +241,6 @@ class HomeDashboard extends ConsumerWidget {
   }
 
   // --- UI Components ---
-
-  Widget _buildHeaderMetricCard({
-    required IconData icon,
-    required Color color,
-    required String value,
-    required String label,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: color.withValues(alpha: 0.9),
-                ),
-              ),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMainFootprintCard(double todayFootprint) {
     return Container(

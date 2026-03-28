@@ -123,7 +123,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),

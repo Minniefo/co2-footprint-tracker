@@ -190,7 +190,7 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
         final impact = calc.getImpactLevel(currentCo2);
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
           child: Form(
             key: _formKey,
             child: Column(
@@ -510,7 +510,7 @@ class _FoodActivityFormState extends ConsumerState<FoodActivityForm> {
         final impact = calc.getImpactLevel(currentCo2);
 
         return Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
           child: Form(
             key: _formKey,
             child: Column(
@@ -673,7 +673,7 @@ class _EnergyActivityFormState extends ConsumerState<EnergyActivityForm> {
         final impact = calc.getImpactLevel(currentCo2);
 
         return Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
           child: Form(
             key: _formKey,
             child: Column(

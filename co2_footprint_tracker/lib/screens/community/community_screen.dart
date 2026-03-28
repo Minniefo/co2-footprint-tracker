@@ -82,7 +82,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
             onRefresh: _refresh,
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.only(top: 12, bottom: 80),
               itemCount: feed.posts.length + (feed.isLoadingMore ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == feed.posts.length) {
