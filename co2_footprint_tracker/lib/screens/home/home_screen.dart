@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
@@ -204,8 +205,8 @@ class HomeDashboard extends ConsumerWidget {
                                     child: CircleAvatar(
                                       radius: 20, 
                                       backgroundColor: Colors.green.shade100,
-                                      backgroundImage: userModel?.photoUrl != null ? NetworkImage(userModel!.photoUrl!) : null,
-                                      child: userModel?.photoUrl == null 
+                                      backgroundImage: (userModel?.photoUrl != null && userModel!.photoUrl!.isNotEmpty) ? CachedNetworkImageProvider(userModel!.photoUrl!) : null,
+                                      child: (userModel?.photoUrl == null || userModel!.photoUrl!.isEmpty)
                                           ? Text(initial, style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.green.shade800)) 
                                           : null,
                                     ),

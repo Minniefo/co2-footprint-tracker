@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/community_post.dart';
 import '../../providers/community_provider.dart';
 import '../public_profile_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 const _kGreen = Color(0xFF2E7D32);
 const _kBg = Color(0xFFF8FAFC);
@@ -109,7 +110,13 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                           const SizedBox(height: 16),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: Image.network(widget.post.mediaUrl!, fit: BoxFit.cover, width: double.infinity),
+                            child: CachedNetworkImage(
+                              imageUrl: widget.post.mediaUrl!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              placeholder: (context, url) => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+                              errorWidget: (context, url, error) => const SizedBox(height: 200, child: Center(child: Icon(Icons.broken_image, size: 50, color: Colors.grey))),
+                            ),
                           ),
                         ],
                       ],
@@ -254,9 +261,9 @@ class _Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     return CircleAvatar(
       radius: radius,
-      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
+      backgroundImage: (avatarUrl != null && avatarUrl!.isNotEmpty) ? CachedNetworkImageProvider(avatarUrl!) : null,
       backgroundColor: _kGreen,
-      child: avatarUrl == null
+      child: (avatarUrl == null || avatarUrl!.isEmpty)
           ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
               style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: radius * 0.85))
           : null,

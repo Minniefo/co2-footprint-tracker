@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/community_post.dart';
 import '../../providers/community_provider.dart';
 import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
 import 'edit_post_screen.dart';
-import '../../screens/public_profile_screen.dart'; // Added import
+import '../../screens/public_profile_screen.dart';
 
 const _kBg = Color(0xFFF8FAFC);
 const _kGreen = Color(0xFF2E7D32);
@@ -223,7 +224,14 @@ class PostCard extends ConsumerWidget {
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(post.mediaUrl!, fit: BoxFit.cover, height: 200, width: double.infinity),
+                    child: CachedNetworkImage(
+                      imageUrl: post.mediaUrl!,
+                      fit: BoxFit.cover,
+                      height: 200,
+                      width: double.infinity,
+                      placeholder: (context, url) => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+                      errorWidget: (context, url, error) => const SizedBox(height: 200, child: Center(child: Icon(Icons.broken_image, size: 50, color: Colors.grey))),
+                    ),
                   ),
                 ],
 
@@ -306,7 +314,7 @@ class _Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     return CircleAvatar(
       radius: radius,
-      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
+      backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl!) : null,
       backgroundColor: _kGreen,
       child: avatarUrl == null
           ? Text(

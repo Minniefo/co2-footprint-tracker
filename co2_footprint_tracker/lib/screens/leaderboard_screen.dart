@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/leaderboard_provider.dart';
 import '../models/leaderboard_entry.dart';
 import 'public_profile_screen.dart';
@@ -183,9 +184,9 @@ class _PodiumSlot extends StatelessWidget {
           const SizedBox(height: 6),
           CircleAvatar(
             radius: avatarRadius,
-            backgroundImage: entry.photoUrl != null ? NetworkImage(entry.photoUrl!) : null,
+            backgroundImage: entry.photoUrl != null && entry.photoUrl!.isNotEmpty ? CachedNetworkImageProvider(entry.photoUrl!) : null,
             backgroundColor: podiumColor.withValues(alpha: 0.15),
-            child: entry.photoUrl == null
+            child: entry.photoUrl == null || entry.photoUrl!.isEmpty
                 ? Text(
                     entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: podiumColor, fontSize: avatarRadius * 0.9),
@@ -284,11 +285,11 @@ class _TableRow extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             CircleAvatar(
-              radius: 16,
-              backgroundImage: entry.photoUrl != null ? NetworkImage(entry.photoUrl!) : null,
-              backgroundColor: (isCurrentUser ? _kGreen : Colors.blueGrey).withValues(alpha: 0.15),
-              child: entry.photoUrl == null
-                  ? Text(entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: isCurrentUser ? _kGreen : Colors.blueGrey.shade600))
+              radius: 20,
+              backgroundImage: (entry.photoUrl != null && entry.photoUrl!.isNotEmpty) ? CachedNetworkImageProvider(entry.photoUrl!) : null,
+              backgroundColor: isCurrentUser ? _kGreen.withValues(alpha: 0.15) : Colors.amber.withValues(alpha: 0.15),
+              child: (entry.photoUrl == null || entry.photoUrl!.isEmpty)
+                  ? Text(entry.displayName.isNotEmpty ? entry.displayName[0].toUpperCase() : '?', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: isCurrentUser ? _kGreen : Colors.amber.shade800))
                   : null,
             ),
             const SizedBox(width: 10),

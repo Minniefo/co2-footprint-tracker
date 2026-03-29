@@ -17,23 +17,21 @@ void main() {
     // 2. Verify title exists
     expect(find.text('Create Account'), findsWidgets);
 
-    // 3. Find the submit button. There is a "Create Account" text in the header and in the button.
-    final submitButton = find.widgetWithText(ElevatedButton, 'Create Account');
-    expect(submitButton, findsOneWidget);
+    // 3. Find the "Next: Eco Profile" button used in step 1.
+    final nextButton = find.widgetWithText(ElevatedButton, 'Next: Eco Profile');
+    expect(nextButton, findsOneWidget);
 
     // 4. Since the form is very long, ensure the button is scrolled into view before clicking
-    await tester.ensureVisible(submitButton);
-    await tester.tap(submitButton);
+    await tester.ensureVisible(nextButton);
+    await tester.tap(nextButton);
     
     // 5. Wait for the form validation red text to appear
     await tester.pumpAndSettle();
 
-    // 6. Assert all the field validation triggers activated
+    // 6. Assert all the required field validation triggers activated in Step 1
     expect(find.text('Email is required'), findsOneWidget);
     expect(find.text('Password is required'), findsOneWidget);
-    expect(find.text('Display Name is required'), findsOneWidget);
-    expect(find.text('Country is required'), findsOneWidget);
-    expect(find.text('Home Type is required'), findsOneWidget);
-    expect(find.text('Diet Type is required'), findsOneWidget);
+    expect(find.text('Please confirm your password'), findsOneWidget);
+    expect(find.text('Display name is required'), findsOneWidget);
   });
 }

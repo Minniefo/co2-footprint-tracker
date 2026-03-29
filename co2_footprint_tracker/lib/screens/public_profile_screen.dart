@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/public_profile_provider.dart';
 import '../models/user.dart';
 import '../models/leaderboard_entry.dart';
@@ -61,8 +62,8 @@ class PublicProfileScreen extends ConsumerWidget {
                         CircleAvatar(
                           radius: 32,
                           backgroundColor: Colors.white24,
-                          backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
-                          child: user.photoUrl == null
+                          backgroundImage: (user.photoUrl != null && user.photoUrl!.isNotEmpty) ? CachedNetworkImageProvider(user.photoUrl!) : null,
+                          child: (user.photoUrl == null || user.photoUrl!.isEmpty)
                               ? Text(initial, style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white))
                               : null,
                         ),

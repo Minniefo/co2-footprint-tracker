@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/community_post.dart';
 import '../../providers/community_provider.dart';
 
@@ -133,7 +134,14 @@ class _EditPostScreenState extends ConsumerState<EditPostScreen> {
               const SizedBox(height: 16),
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.network(widget.post.mediaUrl!, fit: BoxFit.cover, height: 200, width: double.infinity),
+                child: CachedNetworkImage(
+                  imageUrl: widget.post.mediaUrl!,
+                  fit: BoxFit.cover,
+                  height: 200,
+                  width: double.infinity,
+                  placeholder: (context, url) => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+                  errorWidget: (context, url, error) => const SizedBox(height: 200, child: Center(child: Icon(Icons.broken_image, size: 50, color: Colors.grey))),
+                ),
               ),
               const SizedBox(height: 8),
               Container(
