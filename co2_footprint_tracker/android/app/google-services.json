@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "337742352698-6rmurb8htnfv7fb1sohn51rrlpmsvjd6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.co2_footprint_tracker",
+            "certificate_hash": "8719b9fec18898537cfc8b51153e8f80dad7b686"
+          }
+        },
+        {
           "client_id": "337742352698-f293t0a1polslm3dunhggi72mn864gsj.apps.googleusercontent.com",
           "client_type": 3
         }

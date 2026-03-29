@@ -15,10 +15,18 @@ abstract class Activity {
     this.source = 'manual',
   });
 
+  double get co2Kg;
+  String get activityType => type;
+
   Map<String, dynamic> toMap();
 
   factory Activity.fromMap(String id, Map<String, dynamic> map) {
-    final type = map['type'] as String;
+    final type = map['type'] as String?;
+    if (type == null) {
+      // Fallback or log error
+      throw Exception('Missing activity type for doc $id');
+    }
+    
     switch (type) {
       case 'transport':
         return TransportActivity.fromMap(id, map);
@@ -27,7 +35,8 @@ abstract class Activity {
       case 'energy':
         return EnergyActivity.fromMap(id, map);
       default:
-        throw Exception('Unknown activity type: $type');
+        // Instead of throwing, we could return a placeholder if we want to be even safer
+        throw Exception('Unknown activity type: $type for doc $id');
     }
   }
 }

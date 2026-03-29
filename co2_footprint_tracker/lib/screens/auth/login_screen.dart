@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../providers/auth_provider.dart';
 import '../home/home_screen.dart';
+import 'google_onboarding_screen.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -49,18 +50,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _googleLogin() async {
-    final ok = await ref.read(authControllerProvider.notifier).loginWithGoogle();
+    final result = await ref.read(authControllerProvider.notifier).loginWithGoogle();
 
     if (!mounted) return;
 
-    if (ok) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    } else {
-      final error = ref.read(authControllerProvider).error;
-      _showMsg(error ?? 'Google login failed');
+    switch (result) {
+      case GoogleLoginResult.success:
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+        break;
+      case GoogleLoginResult.needsOnboarding:
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GoogleOnboardingScreen()));
+        break;
+      case GoogleLoginResult.failure:
+        final error = ref.read(authControllerProvider).error;
+        _showMsg(error ?? 'Google login failed');
+        break;
     }
   }
 
@@ -276,6 +280,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 )
               : null,
         ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return "$hintText is required";
+          }
+          return null;
+        },
       ),
     );
   }
