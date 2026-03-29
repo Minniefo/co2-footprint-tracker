@@ -25,7 +25,7 @@ With growing awareness of climate change, individuals play a crucial role in red
 - Mapbox integration for route-based distance calculation for transport activities
 
 ### 🤖 AI Features
-- **AI Food Recognition**: Capture food photos for automatic nutritional analysis
+- **AI Food Recognition**: Capture food photos for automatic recognition using a local ONNX model (converted from Hugging Face `nateraw/food`). The Flutter app then automatically calls the USDA API and Gemini API to fetch comprehensive nutritional facts and CO₂ estimates based on the recognized food.
 - **AI Suggestions**: Personalised low-carbon recommendations powered by external AI APIs
 
 ### 🏆 Gamification
@@ -70,8 +70,8 @@ With growing awareness of climate change, individuals play a crucial role in red
 | **File Storage** | Firebase Storage |
 | **Maps & Routes** | Mapbox (`flutter_map`) |
 | **AI Recommendations** | Google Gemini API |
-| **Food Recognition** | Google Gemini Vision API |
-| **Nutrition Data** | USDA FoodData Central API |
+| **Food Recognition** | Local ONNX Model (FastAPI, from HF `nateraw/food`) |
+| **Nutrition Data** | USDA FoodData Central API & Gemini API (called from Flutter) |
 | **Fonts** | Google Fonts (`inter`, `roboto_mono`) |
 | **Navigation** | `curved_navigation_bar` |
 | **Image Handling** | `image_picker` |
@@ -151,10 +151,31 @@ touch .env
 # MAPBOX_ACCESS_TOKEN=pk.ey...        (from mapbox.com)
 # GEMINI_API_KEY=AIza...              (from aistudio.google.com)
 # USDA_API_KEY=...                    (from fdc.nal.usda.gov/api-key)
+# FASTAPI_URL=http://<YOUR_LOCAL_IP>:8000  (Must use local IP, e.g., 192.168.1.13)
 
 # Run the app
 flutter run
 ```
+
+### 🤖 Local Food Detection Model Setup (Python)
+The app uses a local FastAPI server to run a custom ONNX Vision model (converted from Hugging Face `nateraw/food`) for food recognition. After the model recognizes the food, the Flutter app directly calls the USDA and Gemini APIs to fetch nutrition data.
+
+1. Open a new terminal and navigate to the model directory:
+   ```bash
+   cd food-detection-model
+   ```
+2. Create a virtual environment and install dependencies:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+3. Run the local AI server:
+   ```bash
+   uvicorn main:app --host 0.0.0.0 --port 8000
+   ```
+4. **Network Connection**: Ensure the device running the Flutter app and the computer running the AI model are connected to the **same Wi-Fi network**.
+5. Find your computer's local IPv4 address and set it as `FASTAPI_URL` inside `co2_footprint_tracker/.env`.
 
 ### Firebase Setup
 1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
