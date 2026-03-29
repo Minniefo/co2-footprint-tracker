@@ -14,6 +14,7 @@ class UserModel {
   final double? totalCo2Kg;
   final int? points;
   final int? streak;
+  final bool needsOnboarding;
   final PrivacySettings? privacy;
 
   UserModel({
@@ -30,6 +31,7 @@ class UserModel {
     this.totalCo2Kg,
     this.points,
     this.streak,
+    this.needsOnboarding = false,
     this.privacy,
   });
 
@@ -48,6 +50,7 @@ class UserModel {
       totalCo2Kg: (map['total_co2_kg'] as num?)?.toDouble(),
       points: map['points'] is num ? (map['points'] as num).toInt() : int.tryParse(map['points']?.toString() ?? ''),
       streak: map['streak'] is num ? (map['streak'] as num).toInt() : int.tryParse(map['streak']?.toString() ?? ''),
+      needsOnboarding: map['needs_onboarding'] as bool? ?? false,
       privacy: map['privacy'] != null
           ? PrivacySettings.fromMap(map['privacy'] as Map<String, dynamic>)
           : null,
@@ -69,6 +72,7 @@ class UserModel {
       'total_co2_kg': totalCo2Kg,
       'points': points,
       'streak': streak,
+      'needs_onboarding': needsOnboarding,
       'privacy': privacy?.toMap(),
     };
   }

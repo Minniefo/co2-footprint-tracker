@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../auth/google_onboarding_screen.dart';
 import '../auth/login_screen.dart';
 import '../home/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -26,16 +28,21 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    if (user != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+    if (user == null) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+
+    // Check if this user still needs to complete onboarding
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    if (!mounted) return;
+
+    final needsOnboarding = doc.data()?['needs_onboarding'] as bool? ?? false;
+
+    if (needsOnboarding) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GoogleOnboardingScreen()));
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
     }
   }
 

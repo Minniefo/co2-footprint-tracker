@@ -53,6 +53,10 @@ class UserService {
     await _firestore.collection('users').doc(userId).update(data);
   }
 
+  Future<void> setOnboardingComplete(String userId) async {
+    await _firestore.collection('users').doc(userId).update({'needs_onboarding': false});
+  }
+
   /// Uploads [imageFile] to Firebase Storage and saves the URL everywhere it's needed.
   Future<String> uploadAvatar(String userId, File imageFile) async {
     final storageRef = _storage.ref().child('users/$userId/avatar.jpg');
