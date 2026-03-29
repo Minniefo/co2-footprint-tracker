@@ -27,6 +27,8 @@ final authStateChangesProvider = StreamProvider<User?>((ref) {
 final authControllerProvider =
     NotifierProvider<AuthController, AuthState>(AuthController.new);
 
+enum GoogleLoginResult { success, needsOnboarding, failure }
+
 class AuthController extends Notifier<AuthState> {
   @override
   AuthState build() {
@@ -104,43 +106,49 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<bool> loginWithGoogle() async {
+  Future<GoogleLoginResult> loginWithGoogle() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final userCred = await ref.read(authServiceProvider).signInWithGoogle();
       final user = userCred.user;
+      bool isNewUser = false;
+
       if (user != null) {
         final existingDoc = await ref.read(firestoreProvider).collection('users').doc(user.uid).get();
         if (!existingDoc.exists) {
+          isNewUser = true;
           final userDocData = UserModel(
             email: user.email ?? '',
             displayName: user.displayName,
+            photoUrl: user.photoURL,
             createdAt: Timestamp.now(),
             totalCo2Kg: 0.0,
             points: 0,
             streak: 0,
+            needsOnboarding: true,
             privacy: PrivacySettings(shareRank: true, shareActivityDetails: false),
           );
           await ref.read(authServiceProvider).createUserDocument(
             userId: user.uid,
             userData: userDocData,
           );
+        } else {
+          // Existing user — check if they still need onboarding
+          final data = existingDoc.data();
+          if (data != null && (data['needs_onboarding'] as bool? ?? false)) {
+            isNewUser = true; // treat as needing onboarding
+          }
         }
       }
+
       state = state.copyWith(isLoading: false, clearError: true);
-      return true;
+      return isNewUser ? GoogleLoginResult.needsOnboarding : GoogleLoginResult.success;
     } on FirebaseAuthException catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: _mapFirebaseError(e),
-      );
-      return false;
+      state = state.copyWith(isLoading: false, error: _mapFirebaseError(e));
+      return GoogleLoginResult.failure;
     } catch (_) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'Google sign-in failed.',
-      );
-      return false;
+      state = state.copyWith(isLoading: false, error: 'Google sign-in failed.');
+      return GoogleLoginResult.failure;
     }
   }
 

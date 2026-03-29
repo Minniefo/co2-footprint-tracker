@@ -253,7 +253,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _label('Country (optional)'),
-          _field(controller: _countryCtrl, hint: 'e.g. Sri Lanka'),
+          _field(controller: _countryCtrl, hint: 'e.g. UK'),
           const SizedBox(height: 16),
 
           _label('Home Type (optional)'),
