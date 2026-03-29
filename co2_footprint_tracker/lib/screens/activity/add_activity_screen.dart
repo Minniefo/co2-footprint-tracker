@@ -196,30 +196,36 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DropdownButtonFormField<String>(
-                  value: _transportMode,
-                  decoration: InputDecoration(
-                    labelText: 'Transport Mode',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: const Icon(Icons.commute),
+                Container(
+                  decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+                  child: DropdownButtonFormField<String>(
+                    value: _transportMode,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.commute, color: Colors.grey, size: 20),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                    style: GoogleFonts.inter(fontSize: 15, color: Colors.black87),
+                    isExpanded: true,
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
+                    items: _modes.map((mode) => DropdownMenuItem(
+                      value: mode['value'],
+                      child: Text('${mode['icon']}  ${mode['label']}'),
+                    )).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _transportMode = val);
+                        if (_startLocation != null && _endLocation != null) _calculateRoute();
+                      }
+                    },
                   ),
-                  items: _modes.map((mode) => DropdownMenuItem(
-                    value: mode['value'],
-                    child: Text('${mode['icon']} ${mode['label']}'),
-                  )).toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _transportMode = val);
-                      if (_startLocation != null && _endLocation != null) _calculateRoute();
-                    }
-                  },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 
                 LocationSearchField(
                   label: 'Start Location',
-                  icon: Icons.location_on,
-                  iconColor: Colors.green,
+                  icon: Icons.my_location_rounded,
+                  iconColor: Colors.blue.shade600,
                   onSelected: (lat, lng) {
                     setState(() {
                       _startLocation = LatLng(lat, lng);
@@ -227,11 +233,11 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
                     if (_endLocation != null) _calculateRoute();
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 LocationSearchField(
                   label: 'End Location',
-                  icon: Icons.location_on,
-                  iconColor: Colors.red,
+                  icon: Icons.location_on_rounded,
+                  iconColor: Colors.red.shade500,
                   onSelected: (lat, lng) {
                     setState(() {
                       _endLocation = LatLng(lat, lng);
@@ -239,10 +245,10 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
                     if (_startLocation != null) _calculateRoute();
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 
                 Container(
-                  height: 200,
+                  height: 160,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey.shade300),
@@ -293,24 +299,33 @@ class _TransportActivityFormState extends ConsumerState<TransportActivityForm> {
                   ),
                 ),
                 
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: _distanceController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Distance (km)',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    suffixText: 'km',
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+                  child: TextFormField(
+                    controller: _distanceController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: GoogleFonts.inter(fontSize: 15),
+                    decoration: InputDecoration(
+                      hintText: 'Distance',
+                      hintStyle: GoogleFonts.inter(color: Colors.grey.shade500),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      suffixIcon: Padding(
+                        padding: const EdgeInsets.all(14.0),
+                        child: Text('km', style: GoogleFonts.inter(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Enter distance';
+                      final d = double.tryParse(value);
+                      if (d == null) return 'Enter valid number';
+                      if (d <= 0 && _transportMode != 'walk' && _transportMode != 'bike') return 'Distance must be > 0';
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Enter distance';
-                    final d = double.tryParse(value);
-                    if (d == null) return 'Enter valid number';
-                    if (d <= 0 && _transportMode != 'walk' && _transportMode != 'bike') return 'Distance must be > 0';
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 _ImpactPreview(co2Kg: currentCo2, level: impact),
                 const SizedBox(height: 30),
                 ElevatedButton(
@@ -385,16 +400,22 @@ class _LocationSearchFieldState extends ConsumerState<LocationSearchField> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        TextField(
-          controller: _controller,
-          onChanged: _onSearchChanged,
-          decoration: InputDecoration(
-            labelText: widget.label,
-            prefixIcon: Icon(widget.icon, color: widget.iconColor),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            suffixIcon: _isLoading 
-                ? const SizedBox(width: 20, height: 20, child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2)))
-                : null,
+        Container(
+          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+          child: TextField(
+            controller: _controller,
+            onChanged: _onSearchChanged,
+            style: GoogleFonts.inter(fontSize: 15),
+            decoration: InputDecoration(
+              hintText: widget.label,
+              hintStyle: GoogleFonts.inter(color: Colors.grey.shade500),
+              prefixIcon: Icon(widget.icon, color: widget.iconColor, size: 20),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              suffixIcon: _isLoading 
+                  ? const SizedBox(width: 20, height: 20, child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2)))
+                  : null,
+            ),
           ),
         ),
         if (_suggestions.isNotEmpty)
